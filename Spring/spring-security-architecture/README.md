@@ -8,14 +8,17 @@
 <!-- TOC -->
 
 - [Spring Security Architecture Overview](#spring-security-architecture-overview)
-  - [1 核心组件](#1-%e6%a0%b8%e5%bf%83%e7%bb%84%e4%bb%b6)
-    - [1.1 SecurityContextHolder](#11-securitycontextholder)
-      - [获取当前用户的信息](#%e8%8e%b7%e5%8f%96%e5%bd%93%e5%89%8d%e7%94%a8%e6%88%b7%e7%9a%84%e4%bf%a1%e6%81%af)
-    - [1.2 Authentication](#12-authentication)
-      - [Spring Security 是如何完成身份认证的](#spring-security-%e6%98%af%e5%a6%82%e4%bd%95%e5%ae%8c%e6%88%90%e8%ba%ab%e4%bb%bd%e8%ae%a4%e8%af%81%e7%9a%84)
-    - [1.3 AuthenticationManager](#13-authenticationmanager)
+    - [1 核心组件](#1-核心组件)
+        - [1.1 SecurityContextHolder](#11-securitycontextholder)
+            - [获取当前用户的信息](#获取当前用户的信息)
+        - [1.2 Authentication](#12-authentication)
+            - [Spring Security 是如何完成身份认证的](#spring-security-是如何完成身份认证的)
+        - [1.3 AuthenticationManager](#13-authenticationmanager)
+        - [1.4 DaoAuthenticationProvider](#14-daoauthenticationprovider)
 
 <!-- /TOC -->
+
+---
 
 # Spring Security Architecture Overview
 
@@ -214,9 +217,17 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 - 身份信息的存放容器 `SecurityContextHolder`;
 - 身份信息的抽象 `Authentication`;
 - 身份认证器 `AuthenticationManager`;
-- 认证流程 
+- 认证流程; 
 
-下面来介绍下 AuthenticationProvider 接口的具体实现。
+下面来介绍下 `AuthenticationProvider` 接口的具体实现.
 
+### 1.4 DaoAuthenticationProvider
 
+`AuthenticationProvider` 最最最常用的一个实现便是 `DaoAuthenticationProvider`. 顾名思义, Dao 正是数据访问层的缩写, 也暗示了这个身份认证器的实现思路. 由于本文是一个 Overview, 姑且只给出其 UML 类图:
+
+![DaoAuthenticationProvider UML](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP1-1-4_DaoAuthenticationProvider_UML.png)
+
+按照我们最直观的思路, 怎么去认证一个用户呢? 用户前台提交了用户名和密码, 而数据库中保存了用户名和密码, 认证便是负责比对同一个用户名, 提交的密码和保存的密码是否相同便是了. 
+
+在 Spring Security 中, 提交的用户名和密码被封装成了 `UsernamePasswordAuthenticationToken`, 而根据用户名加载用户的任务则是交给了 `UserDetailsService`, 在 `DaoAuthenticationProvider` 中, 对应的方法便是 `retrieveUser`, 虽然有两个参数, 但是 `retrieveUser` 只有第一个参数起主要作用, 返回一个 `UserDetails`. 还需要完成 `UsernamePasswordAuthenticationToken` 和 `UserDetails` 密码的比对, 这便是交给 `additionalAuthenticationChecks` 方法完成的, 如果这个 `void` 方法没有抛异常, 则认为比对成功. 比对密码的过程, 用到了 `PasswordEncoder` 和 `SaltSource`, 密码加密和盐的概念相信不用我赘述了, 它们为保障安全而设计, 都是比较基础的概念.
 ---
