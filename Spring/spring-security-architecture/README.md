@@ -225,7 +225,7 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 
 `AuthenticationProvider` 最最最常用的一个实现便是 `DaoAuthenticationProvider`. 顾名思义, Dao 正是数据访问层的缩写, 也暗示了这个身份认证器的实现思路. 由于本文是一个 Overview, 姑且只给出其 UML 类图:
 
-![DaoAuthenticationProvider UML](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP1-1-4_DaoAuthenticationProvider_UML.png)
+![DaoAuthenticationProvider UML](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP1-1-4_DaoAuthenticationProvider_UML.png?raw=true)
 
 按照我们最直观的思路, 怎么去认证一个用户呢? 用户前台提交了用户名和密码, 而数据库中保存了用户名和密码, 认证便是负责比对同一个用户名, 提交的密码和保存的密码是否相同便是了. 
 
