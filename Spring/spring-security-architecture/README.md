@@ -22,6 +22,9 @@
   - [2.3 配置 Spring Security](#23-%e9%85%8d%e7%bd%ae-spring-security)
   - [2.4 添加启动类](#24-%e6%b7%bb%e5%8a%a0%e5%90%af%e5%8a%a8%e7%b1%bb)
   - [2.5 测试](#25-%e6%b5%8b%e8%af%95)
+  - [2.6 总结](#26-%e6%80%bb%e7%bb%93)
+- [3. 核心配置解读](#3-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
+  - [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
 
 <!-- /TOC -->
 
@@ -489,16 +492,63 @@ public class SpringSecurityArchitectureDemoApplication {
 
 ## 2.5 测试
 
-访问首页 [http://localhost:8080/](http://localhost:8080/):
-
+访问首页 [http://localhost:8080/](http://localhost:8080/).
 
 ![home.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_home.png?raw=true)
 
+点击 here, 尝试访问受限的页面: /hello, 由于未登录, 结果被强制跳转到登录也 /login.
+
 ![login.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_login.png?raw=true)
+
+输入正确的用户名和密码之后, 跳转到之前想要访问的 /hello.
 
 ![hello.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_hello.png?raw=true)
 
+点击 Sign out 退出按钮, 访问: /logout, 回到登录页面.
+
 ![logout.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_logout.png?raw=true)
 
+## 2.6 总结
 
+本篇文章没有什么干货, 基本算是翻译了 Spring Security Guides 的内容, 稍微了解 Spring Security 的朋友都不会对这个翻译感到陌生. 考虑到受众的问题, 一个入门的例子是必须得有的, 方便后续对 Spring Security 的自定义配置进行讲解. 下一节, 以此 guides 为例, 讲解这些最简化的配置背后, Spring Security 都帮我们做了什么工作.
+
+# 3. 核心配置解读
+
+上一章 Spring Security Guides 通过 Spring Security 的配置项了解了 Spring Security 是如何保护我们的应用的, 本章对上一次的配置做一个分析.
+
+## 3.1 功能介绍
+
+```java 
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authorizeRequests()
+                    .antMatchers("/", "/home").permitAll()
+                    .anyRequest().authenticated()
+                    .and()
+                .formLogin()
+                    .loginPage("/login")
+                    .permitAll()
+                    .and()
+                .logout()
+                    .permitAll();
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth
+                .inMemoryAuthentication()
+                    .withUser("admin").password("admin").roles("USER");
+    }
+}
+```
 ---
