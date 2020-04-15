@@ -26,6 +26,7 @@
 - [3. 核心配置解读](#3-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
   - [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
   - [3.2 @EnableWebSecurity](#32-enablewebsecurity)
+    - [WebSecurityConfiguration](#websecurityconfiguration)
 
 <!-- /TOC -->
 
@@ -622,5 +623,9 @@ public @interface EnableGlobalAuthentication {
 注意点同样在 `@Import` 之中, 它实际上激活了 `AuthenticationConfiguration` 这样的一个配置类, 用来配置认证相关的核心类.
 
 也就是说: `@EnableWebSecurity` 完成的工作便是加载了 `WebSecurityConfiguration`,`AuthenticationConfiguration` 这两个核心配置类, 也就此将 spring security 的职责划分为了配置安全信息, 配置认证信息两部分.
+
+### WebSecurityConfiguration
+
+在这个配置类中, 有一个非常重要的 Bean 被注册了.
 
 ---
