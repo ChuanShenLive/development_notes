@@ -20,6 +20,8 @@
   - [2.1 引入依赖](#21-%e5%bc%95%e5%85%a5%e4%be%9d%e8%b5%96)
   - [2.2 创建一个不受安全限制的 web 应用](#22-%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa%e4%b8%8d%e5%8f%97%e5%ae%89%e5%85%a8%e9%99%90%e5%88%b6%e7%9a%84-web-%e5%ba%94%e7%94%a8)
   - [2.3 配置 Spring Security](#23-%e9%85%8d%e7%bd%ae-spring-security)
+  - [2.4 添加启动类](#24-%e6%b7%bb%e5%8a%a0%e5%90%af%e5%8a%a8%e7%b1%bb)
+  - [2.5 测试](#25-%e6%b5%8b%e8%af%95)
 
 <!-- /TOC -->
 
@@ -444,5 +446,59 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {   // <1>
 ```
 
 这个 Thymeleaf 模板提供了一个用于提交用户名和密码的表单, 其中 name="username", name="password" 是默认的表单值, 并发送到 "/ login". 在默认配置中, Spring Security 提供了一个拦截该请求并验证用户的过滤器. 如果验证失败, 该页面将重定向到"/ login?error", 并显示相应的错误消息. 当用户选择注销, 请求会被发送到"/ login?logout".
+
+最后, 我们为 `hello.html` 添加一些内容, 用于展示用户信息.
+
+`src\main\resources\templates\hello.html`
+
+```html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello World!</title>
+</head>
+<body>
+    <h1 th:inline="text">Hello [[${#httpServletRequest.remoteUser}]]!</h1>
+    <form th:action="@{/logout}" method="post">
+        <input type="submit" value="Sign Out">
+    </form>
+</body>
+</html>
+```
+
+我们使用 Spring Security 之后, `HttpServletRequest#getRemoteUser()` 可以用来获取用户名. 登出请求将被发送到"/logout". 成功注销后, 会将用户重定向到"/login?logout".
+
+## 2.4 添加启动类
+
+`src\main\java\com\chuanshen\SpringSecurityArchitectureDemoApplication.java`
+
+```java
+@SpringBootApplication
+public class SpringSecurityArchitectureDemoApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringSecurityArchitectureDemoApplication.class, args);
+    }
+
+}
+```
+
+## 2.5 测试
+
+访问首页 [http://localhost:8080/](http://localhost:8080/):
+
+
+![home.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_home.png?raw=true)
+
+![login.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_login.png?raw=true)
+
+![hello.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_hello.png?raw=true)
+
+![logout.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_logout.png?raw=true)
+
 
 ---
