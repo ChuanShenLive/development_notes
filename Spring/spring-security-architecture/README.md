@@ -25,6 +25,7 @@
   - [2.6 总结](#26-%e6%80%bb%e7%bb%93)
 - [3. 核心配置解读](#3-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
   - [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
+  - [3.2 @EnableWebSecurity](#32-enablewebsecurity)
 
 <!-- /TOC -->
 
@@ -492,21 +493,30 @@ public class SpringSecurityArchitectureDemoApplication {
 
 ## 2.5 测试
 
+![CP1-1-4_DaoAuthenticationProvider_UML.png](https://i.loli.net/2020/04/15/abU8pTnXkGlsRCc.png)
+![CP1-1-6_spring_security_architecture.png](https://i.loli.net/2020/04/15/HpBmV2ZNa1cFsx6.png)
+
+
+
+
 访问首页 [http://localhost:8080/](http://localhost:8080/).
 
-![home.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_home.png?raw=true)
+
+![home.html](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP2-2-5_home.png?raw=true)
 
 点击 here, 尝试访问受限的页面: /hello, 由于未登录, 结果被强制跳转到登录也 /login.
 
-![login.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_login.png?raw=true)
+
+![login.html](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP2-2-5_login.png?raw=true)
 
 输入正确的用户名和密码之后, 跳转到之前想要访问的 /hello.
 
-![hello.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_hello.png?raw=true)
+
+![hello.html](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP2-2-5_hello.png?raw=true)
 
 点击 Sign out 退出按钮, 访问: /logout, 回到登录页面.
 
-![logout.html](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP2-2-5_logout.png?raw=true)
+![logout.html](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP2-2-5_logout.png?raw=true)
 
 ## 2.6 总结
 
@@ -517,6 +527,8 @@ public class SpringSecurityArchitectureDemoApplication {
 上一章 Spring Security Guides 通过 Spring Security 的配置项了解了 Spring Security 是如何保护我们的应用的, 本章对上一次的配置做一个分析.
 
 ## 3.1 功能介绍
+
+这是 Spring Security 入门指南中的配置项:
 
 ```java 
 @Configuration
@@ -551,4 +563,64 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     }
 }
 ```
+
+当配置了上述的 javaconfig 之后, 我们的应用便具备了如下的功能:  
+
+- 除了 `"/"`, `"/home"`(首页), `"/login"`(登录), `"/logout"`(注销) 之外, 其他路径都需要认证.
+- 指定 `"/login"` 该路径为登录页面, 当未认证的用户尝试访问任何受保护的资源时, 都会跳转到 `"/login"`.
+- 默认指定 `"/logout"` 为注销页面
+- 配置一个内存中的用户认证器, 使用 admin/admin 作为用户名和密码, 具有 USER 角色
+- 防止 CSRF 攻击
+- Session Fixation protection (可以参考 Spring Session 的文章, 防止别人篡改 sessionId)
+- Security Header (添加一系列和 Header 相关的控制)
+  - HTTP Strict Transport Security for secure requests
+  - 集成 X-Content-Type-Options
+  - 缓存控制
+  - 集成 X-XSS-Protection
+  - X-Frame-Options integration to help prevent Clickjacking (iframe 被默认禁止使用)
+- 为 Servlet API 集成了如下的几个方法
+  - HttpServletRequest.html#getRemoteUser()
+  - HttpServletRequest.html#getUserPrincipal()
+  - HttpServletRequest.html#isUserInRole(java.lang.String)
+  - HttpServletRequest.html#login(java.lang.String, java.lang.String)
+  - HttpServletRequest.html#logout()
+
+## 3.2 @EnableWebSecurity
+
+我们自己定义的配置类 `WebSecurityConfig` 加上了 `@EnableWebSecurity` 注解, 同时继承了 `WebSecurityConfigurerAdapter`. 你可能会在想谁的作用大一点, 毫无疑问 `@EnableWebSecurity` 起到决定性的配置作用, 它其实是个组合注解.
+
+```java
+@Retention(value = java.lang.annotation.RetentionPolicy.RUNTIME)
+@Target(value = { java.lang.annotation.ElementType.TYPE })
+@Documented
+@Import({ WebSecurityConfiguration.class,   // <2>
+		SpringWebMvcImportSelector.class,   // <1>
+		OAuth2ImportSelector.class })
+@EnableGlobalAuthentication // <3>
+@Configuration
+public @interface EnableWebSecurity {
+	boolean debug() default false;
+}
+```
+
+`@Import` 是 spring boot 提供的用于引入外部的配置的注解, 可以理解为: `@EnableWebSecurity` 注解激活了 `@Import` 注解中包含的配置类.
+
+1. `SpringWebMvcImportSelector` 的作用是判断当前的环境是否包含 spring mvc, 因为 spring security 可以在非 spring 环境下使用, 为了避免 DispatcherServlet 的重复配置, 所以使用了这个注解来区分.
+2. `WebSecurityConfiguration` 顾名思义, 是用来配置 web 安全的, 下面的小节会详细介绍。
+3. `@EnableGlobalAuthentication` 注解的源码如下:
+
+```java
+@Retention(value = java.lang.annotation.RetentionPolicy.RUNTIME)
+@Target(value = { java.lang.annotation.ElementType.TYPE })
+@Documented
+@Import(AuthenticationConfiguration.class)
+@Configuration
+public @interface EnableGlobalAuthentication {
+}
+```
+
+注意点同样在 `@Import` 之中, 它实际上激活了 `AuthenticationConfiguration` 这样的一个配置类, 用来配置认证相关的核心类.
+
+也就是说: `@EnableWebSecurity` 完成的工作便是加载了 `WebSecurityConfiguration`,`AuthenticationConfiguration` 这两个核心配置类, 也就此将 spring security 的职责划分为了配置安全信息, 配置认证信息两部分.
+
 ---
