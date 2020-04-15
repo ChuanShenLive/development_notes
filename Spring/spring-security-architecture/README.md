@@ -407,4 +407,42 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {   // <1>
 }
 ```
 
+1. `@EnableWebSecurity` 注解使得 SpringMVC 集成了 Spring Security 的 web 安全支持. 另外, `WebSecurityConfig` 配置类同时继承了 `WebSecurityConfigurerAdapter`, 重写了其中的特定方法, 用于自定义 Spring Security 配置. 整个 Spring Security 的工作量, 其实都是集中在该配置类, 不仅仅是这个 guides, 实际项目中也是如此.
+
+2. `configure(HttpSecurity)` 定义了哪些 URL 路径应该被拦截, 如字面意思所描述: "/",  "/home" 允许所有人访问, "/login" 作为登录入口, 也被允许访问, 而剩下的 "/hello" 则需要登陆后才可以访问.
+
+3. `configure(AuthenticationManagerBuilder)` 在内存中配置一个用户, admin/admin 分别是用户名和密码, 这个用户拥有 USER 角色。
+
+我们目前还没有登录页面, 下面创建登录页面:
+
+`src\main\resources\templates\login.html`
+
+```html
+<!DOCTYPE html>
+<html mlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spring Security Example </title>
+</head>
+<body>
+    <div th:if="${param.error}">
+        Invalid username and password.
+    </div>
+    <div th:if="${param.logout}">
+        You have been logged out.
+    </div>
+    <form th:action="@{/login}" method="post">
+        <div><label> User Name : <input type="text" name="username"/> </label></div>
+        <div><label> Password: <input type="password" name="password"/> </label></div>
+        <div><input type="submit" value="Sign In"/></div>
+    </form>
+</body>
+</html>
+```
+
+这个 Thymeleaf 模板提供了一个用于提交用户名和密码的表单, 其中 name="username", name="password" 是默认的表单值, 并发送到 "/ login". 在默认配置中, Spring Security 提供了一个拦截该请求并验证用户的过滤器. 如果验证失败, 该页面将重定向到"/ login?error", 并显示相应的错误消息. 当用户选择注销, 请求会被发送到"/ login?logout".
+
 ---
