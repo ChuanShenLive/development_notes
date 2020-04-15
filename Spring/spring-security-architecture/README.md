@@ -17,6 +17,9 @@
   - [1.5 UserDetails 与 UserDetailsService](#15-userdetails-%e4%b8%8e-userdetailsservice)
   - [1.6 架构概览图](#16-%e6%9e%b6%e6%9e%84%e6%a6%82%e8%a7%88%e5%9b%be)
 - [2 Spring Security Guides](#2-spring-security-guides)
+  - [2.1 引入依赖](#21-%e5%bc%95%e5%85%a5%e4%be%9d%e8%b5%96)
+  - [2.2 创建一个不受安全限制的 web 应用](#22-%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa%e4%b8%8d%e5%8f%97%e5%ae%89%e5%85%a8%e9%99%90%e5%88%b6%e7%9a%84-web-%e5%ba%94%e7%94%a8)
+  - [2.3 配置 Spring Security](#23-%e9%85%8d%e7%bd%ae-spring-security)
 
 <!-- /TOC -->
 
@@ -279,3 +282,129 @@ public interface UserDetailsService {
 ---
 
 # 2 Spring Security Guides
+
+第一章 Spring Security Architecture Overview, 介绍了 Spring Security 的基础架构, 这一章通过 Spring 官方给出的一个 guides 例子, 来了解 Spring Security 是如何保护我们的应用的, 之后会对进行一个解读.
+
+## 2.1 引入依赖
+
+```xml
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+    </dependencies>
+```
+
+由于我们集成了 springboot, 所以不需要显示的引入 Spring Security 文档中描述 core, config 依赖, 只需要引入 `spring-boot-starter-security` 即可.
+
+## 2.2 创建一个不受安全限制的 web 应用
+
+这是一个首页, 不受安全限制
+
+`src\main\resources\templates\home.html`
+
+```html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spring Security Example</title>
+</head>
+<body>
+    <h1>Welcome!</h1>
+
+    <p>Click <a th:href="@{/hello}">here</a> to see a greeting.</p>
+</body>
+</html>
+```
+
+这个简单的页面上包含了一个链接, 跳转到 "/hello". 对应如下的页面
+
+`src\main\resources\templates\hello.html`
+
+```html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello World!</title>
+</head>
+<body>
+    <h1>Hello World!</h1>
+</body>
+</html>
+```
+
+接下来配置 Spring MVC, 使得我们能够访问到页面.
+
+`src\main\java\com\chuanshen\config\MvcConfig.java`
+
+```java
+@Configuration
+public class MvcConfig implements WebMvcConfigurer {
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/home").setViewName("home");
+        registry.addViewController("/").setViewName("home");
+        registry.addViewController("/hello").setViewName("hello");
+        registry.addViewController("/login").setViewName("login");
+    }
+}
+``` 
+
+## 2.3 配置 Spring Security
+
+一个典型的安全配置如下所示:
+
+`src\main\java\com\chuanshen\config\WebSecurityConfig.java`
+
+```java
+@Configuration
+@EnableWebSecurity  // <1>
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {   // <1>
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http    // <2>
+                .authorizeRequests()
+                    .antMatchers("/", "/home").permitAll()
+                    .anyRequest().authenticated()
+                    .and()
+                .formLogin()
+                    .loginPage("/login")
+                    .permitAll()
+                    .and()
+                .logout()
+                    .permitAll();
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth    // <3>
+                .inMemoryAuthentication()
+                    .withUser("admin").password("admin").roles("USER");
+    }
+}
+```
+
+---
