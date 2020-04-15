@@ -235,7 +235,7 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 
 `AuthenticationProvider` 最最最常用的一个实现便是 `DaoAuthenticationProvider`. 顾名思义, Dao 正是数据访问层的缩写, 也暗示了这个身份认证器的实现思路. 由于本文是一个 Overview, 姑且只给出其 UML 类图:
 
-![DaoAuthenticationProvider UML](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP1-1-4_DaoAuthenticationProvider_UML.png?raw=true)
+![DaoAuthenticationProvider UML](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP1-1-4_DaoAuthenticationProvider_UML.png?raw=true)
 
 按照我们最直观的思路, 怎么去认证一个用户呢? 用户前台提交了用户名和密码, 而数据库中保存了用户名和密码, 认证便是负责比对同一个用户名, 提交的密码和保存的密码是否相同便是了. 
 
@@ -282,7 +282,7 @@ public interface UserDetailsService {
 
 为了更加形象的理解上述我介绍的这些核心类, 附上一张按照我的理解, 所画出 Spring Security 的一张非典型的 UML 图
 
-![架构概览图 spring_security_architecture](https://raw.githubusercontent.com/ChuanShenLive/development_notes/master/Spring/spring-security-architecture/images/CP1-1-6_spring_security_architecture.png?raw=true)
+![架构概览图 spring_security_architecture](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP1-1-6_spring_security_architecture.png?raw=true)
 
 如果对 Spring Security 的这些概念感到理解不能, 不用担心, 因为这是 Architecture First 导致的必然结果, 先过个眼熟. 后续的文章会秉持 Code First 的理念, 陆续详细地讲解这些实现类的使用场景, 源码分析, 以及最基本的: 如何配置 Spring Security, 在后面的文章中可以不时翻看这个章节, 找到具体的类在整个架构中所处的位置, 这也是本篇文章的定位. 另外, 一些 Spring Security 的过滤器还未囊括在架构概览中, 如将表单信息包装成 `UsernamePasswordAuthenticationToken` 的过滤器, 考虑到这些虽然也是架构的一部分, 但是真正重写他们的可能性较小, 所以打算放到后面的章节讲解.
 
@@ -493,12 +493,6 @@ public class SpringSecurityArchitectureDemoApplication {
 ```
 
 ## 2.5 测试
-
-![CP1-1-4_DaoAuthenticationProvider_UML.png](https://i.loli.net/2020/04/15/abU8pTnXkGlsRCc.png)
-![CP1-1-6_spring_security_architecture.png](https://i.loli.net/2020/04/15/HpBmV2ZNa1cFsx6.png)
-
-
-
 
 访问首页 [http://localhost:8080/](http://localhost:8080/).
 
