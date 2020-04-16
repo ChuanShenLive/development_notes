@@ -27,6 +27,9 @@
   - [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
   - [3.2 @EnableWebSecurity](#32-enablewebsecurity)
     - [WebSecurityConfiguration](#websecurityconfiguration)
+    - [AuthenticationConfiguration](#authenticationconfiguration)
+  - [3.3 WebSecurityConfigurerAdapter](#33-websecurityconfigureradapter)
+    - [HttpSecurity 常用配置](#httpsecurity-%e5%b8%b8%e7%94%a8%e9%85%8d%e7%bd%ae)
 
 <!-- /TOC -->
 
@@ -621,5 +624,94 @@ public @interface EnableGlobalAuthentication {
 ### WebSecurityConfiguration
 
 在这个配置类中, 有一个非常重要的 Bean 被注册了.
+
+```java
+@Configuration(proxyBeanMethods = false)
+public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAware {
+
+    //...
+
+	/**
+	 * Creates the Spring Security Filter Chain
+	 * @return the {@link Filter} that represents the security filter chain
+	 * @throws Exception
+	 */
+	// DEFAULT_FILTER_NAME = "springSecurityFilterChain"
+    @Bean(name = AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME)
+	public Filter springSecurityFilterChain() throws Exception {
+		boolean hasConfigurers = webSecurityConfigurers != null
+				&& !webSecurityConfigurers.isEmpty();
+		if (!hasConfigurers) {
+			WebSecurityConfigurerAdapter adapter = objectObjectPostProcessor
+					.postProcess(new WebSecurityConfigurerAdapter() {
+					});
+			webSecurity.apply(adapter);
+		}
+		return webSecurity.build();
+	}
+
+    // ...
+}
+```
+
+在未使用 spring boot 之前, 大多数人都应该对 `springSecurityFilterChain` 这个名词不会陌生, 他是 spring security 的核心过滤器, 是整个认证的入口. 在曾经的 XML 配置中, 想要启用 spring security, 需要在 `web.xml` 中进行如下配置:
+
+```xml
+<!-- Spring Security -->
+   <filter>
+       <filter-name>springSecurityFilterChain</filter-name>
+       <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+   </filter>
+
+   <filter-mapping>
+       <filter-name>springSecurityFilterChain</filter-name>
+       <url-pattern>/*</url-pattern>
+   </filter-mapping>
+```
+
+而在 spring boot 集成之后, 这样的 XML 被 java 配置取代. `WebSecurityConfiguration` 中完成了声明 `springSecurityFilterChain` 的作用, 并且最终交给 `DelegatingFilterProxy` 这个代理类, 负责拦截请求 (注意 `DelegatingFilterProxy` 这个类不是 spring security 包中的, 而是存在于 web 包中, spring 使用了代理模式来实现安全过滤的解耦).
+
+### AuthenticationConfiguration
+
+```java
+@Configuration(proxyBeanMethods = false)
+@Import(ObjectPostProcessorConfiguration.class)
+public class AuthenticationConfiguration {
+
+    // ...
+	@Bean
+	public AuthenticationManagerBuilder authenticationManagerBuilder(
+			ObjectPostProcessor<Object> objectPostProcessor, ApplicationContext context) {
+		LazyPasswordEncoder defaultPasswordEncoder = new LazyPasswordEncoder(context);
+		AuthenticationEventPublisher authenticationEventPublisher = getBeanOrNull(context, AuthenticationEventPublisher.class);
+
+		DefaultPasswordEncoderAuthenticationManagerBuilder result = new DefaultPasswordEncoderAuthenticationManagerBuilder(objectPostProcessor, defaultPasswordEncoder);
+		if (authenticationEventPublisher != null) {
+			result.authenticationEventPublisher(authenticationEventPublisher);
+		}
+		return result;
+	}
+
+	public AuthenticationManager getAuthenticationManager() throws Exception {
+        // ...
+	}
+    //...
+}
+```
+
+`AuthenticationConfiguration` 的主要任务, 便是负责生成全局的身份认证管理者 AuthenticationManager. 还记得在 "1 Spring Security Architecture Overview 核心组件", 介绍了 Spring Security 的认证体系, `AuthenticationManager` 便是最核心的身份认证管理器.
+
+## 3.3 WebSecurityConfigurerAdapter
+
+适配器模式在 spring 中被广泛的使用, 在配置中使用 Adapter 的好处便是, 我们可以选择性的配置想要修改的那一部分配置, 而不用覆盖其他不相关的配置. `WebSecurityConfigurerAdapter` 中我们可以选择自己想要修改的内容, 来进行重写, 而其提供了三个 configure 重载方法, 是我们主要关心的:
+
+![WebSecurityConfigurerAdapter 中的 configure](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP3-3-3_WebSecurityConfigurerAdapter.png?raw=true)
+
+由参数就可以知道，分别是对 AuthenticationManagerBuilder，WebSecurity，HttpSecurity 进行个性化的配置。
+
+![HttpSecurity 中的主要方法](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP3-3-3_HttpSecurity.png?raw=true)
+
+
+### HttpSecurity 常用配置
 
 ---
