@@ -23,13 +23,21 @@
   - [2.4 添加启动类](#24-%e6%b7%bb%e5%8a%a0%e5%90%af%e5%8a%a8%e7%b1%bb)
   - [2.5 测试](#25-%e6%b5%8b%e8%af%95)
   - [2.6 总结](#26-%e6%80%bb%e7%bb%93)
-- [3. 核心配置解读](#3-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
+- [3. Spring Security 核心配置解读](#3-spring-security-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
   - [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
   - [3.2 @EnableWebSecurity](#32-enablewebsecurity)
     - [WebSecurityConfiguration](#websecurityconfiguration)
     - [AuthenticationConfiguration](#authenticationconfiguration)
   - [3.3 WebSecurityConfigurerAdapter](#33-websecurityconfigureradapter)
     - [HttpSecurity 常用配置](#httpsecurity-%e5%b8%b8%e7%94%a8%e9%85%8d%e7%bd%ae)
+    - [WebSecurityBuilder](#websecuritybuilder)
+    - [AuthenticationManagerBuilder](#authenticationmanagerbuilder)
+- [4 Spring Security 核心过滤器源码分析](#4-spring-security-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90)
+  - [4.1 核心过滤器概述](#41-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%a6%82%e8%bf%b0)
+  - [4.2 SecurityContextPersistenceFilter](#42-securitycontextpersistencefilter)
+    - [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90)
+  - [4.3 UsernamePasswordAuthenticationFilter](#43-usernamepasswordauthenticationfilter)
+    - [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-1)
 
 <!-- /TOC -->
 
@@ -520,7 +528,9 @@ public class SpringSecurityArchitectureDemoApplication {
 
 本篇文章没有什么干货, 基本算是翻译了 Spring Security Guides 的内容, 稍微了解 Spring Security 的朋友都不会对这个翻译感到陌生. 考虑到受众的问题, 一个入门的例子是必须得有的, 方便后续对 Spring Security 的自定义配置进行讲解. 下一节, 以此 guides 为例, 讲解这些最简化的配置背后, Spring Security 都帮我们做了什么工作.
 
-# 3. 核心配置解读
+---
+
+# 3. Spring Security 核心配置解读
 
 上一章 Spring Security Guides 通过 Spring Security 的配置项了解了 Spring Security 是如何保护我们的应用的, 本章对上一次的配置做一个分析.
 
@@ -707,11 +717,354 @@ public class AuthenticationConfiguration {
 
 ![WebSecurityConfigurerAdapter 中的 configure](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP3-3-3_WebSecurityConfigurerAdapter.png?raw=true)
 
-由参数就可以知道，分别是对 AuthenticationManagerBuilder，WebSecurity，HttpSecurity 进行个性化的配置。
+由参数就可以知道, 分别是对 `AuthenticationManagerBuilder`, `WebSecurity`, `HttpSecurity` 进行个性化的配置.
+
+### HttpSecurity 常用配置
+
+```java
+@Configuration
+@EnableWebSecurity
+public class CustomWebSecurityConfig extends WebSecurityConfigurerAdapter {
+  
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/resources/**", "/signup", "/about").permitAll()
+                .antMatchers("/admin/**").hasRole("ADMIN")
+                .antMatchers("/db/**").access("hasRole('ADMIN') and hasRole('DBA')")
+                .anyRequest().authenticated()
+                .and()
+            .formLogin()
+                .usernameParameter("username")
+                .passwordParameter("password")
+                .failureForwardUrl("/login?error")
+                .loginPage("/login")
+                .permitAll()
+                .and()
+            .logout()
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/index")
+                .permitAll()
+                .and()
+            .httpBasic()
+                .disable();
+    }
+}
+```
+
+上述是一个使用 Java Configuration 配置 `HttpSecurity` 的典型配置, 其中 http 作为根开始配置, 每一个 `and()` 对应了一个模块的配置 (等同于 xml 配置中的结束标签), 并且 `and()` 返回了 `HttpSecurity` 本身, 于是可以连续进行配置. 他们配置的含义也非常容易通过变量本身来推测:
+
+- `authorizeRequests()` 配置路径拦截, 表明路径访问所对应的权限, 角色, 认证信息.
+- `formLogin()` 对应表单认证相关的配置
+- `logout()` 对应了注销相关的配置
+- `httpBasic()` 可以配置 basic 登录
+- etc
+
+他们分别代表了 http 请求相关的安全配置, 这些配置项无一例外的返回了 Configurer 类, 而所有的 http 相关配置可以通过查看 HttpSecurity 的主要方法得知:
 
 ![HttpSecurity 中的主要方法](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP3-3-3_HttpSecurity.png?raw=true)
 
+需要对 http 协议有一定的了解才能完全掌握所有的配置, 不过, spring boot 和 spring security 的自动配置已经足够使用了. 其中每一项 Configurer (e.g. `FormLoginConfigurer`, `CsrfConfigurer`) 都是 `HttpConfigurer` 的细化配置项.
 
-### HttpSecurity 常用配置
+### WebSecurityBuilder
+
+```java
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    @Override
+    public void configure(WebSecurity web) throws Exception {
+        web
+            .ignoring()
+            .antMatchers("/resources/**");
+    }
+}
+```
+
+上述是一个使用 Java Configuration 配置 `WebSecurity` 的典型配置, 这个配置中并不会出现太多的配置信息.
+
+### AuthenticationManagerBuilder
+
+```java
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth
+            .inMemoryAuthentication()
+            .withUser("admin").password("admin").roles("USER");
+    }
+}
+```
+
+想要在 `WebSecurityConfigurerAdapter` 中进行认证相关的配置, 可以使用 `configure(AuthenticationManagerBuilder auth)` 暴露一个 `AuthenticationManager` 的建造器: `AuthenticationManagerBuilder`. 如上所示, 我们便完成了内存中用户的配置.
+
+`WebSecurityConfigurerAdapter` 也可以如下配置:
+
+```java
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    
+    @Autowired
+    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
+        auth
+            .inMemoryAuthentication()
+                .withUser("admin").password("admin").roles("USER");
+    }
+}
+```
+
+如果你的应用只有唯一一个 `WebSecurityConfigurerAdapter`, 那么他们之间的差距可以被忽略.
+
+从方法名可以看出两者的区别: 使用 `@Autowired` 注入的 `AuthenticationManagerBuilder` 是全局的身份认证器, 作用域可以跨越多个 `WebSecurityConfigurerAdapter`, 以及影响到基于 `Method` 的安全控制; 而 `protected configure()` 的方式则类似于一个匿名内部类, 它的作用域局限于一个 `WebSecurityConfigurerAdapter` 内部. 关于这一点的区别, 可以参考 [issuespring-security#issues4571](https://github.com/spring-projects/spring-security/issues/4571). 官方文档中, 也给出了配置多个 `WebSecurityConfigurerAdapter` 的场景以及 demo, 将在该系列的后续文章中解读.
+
+---
+
+# 4 Spring Security 核心过滤器源码分析
+
+前面的部分, 我们关注了 Spring Security 是如何完成认证工作的, 但是另外一部分核心的内容: 过滤器一直没有提到, 我们已经知道 Spring Security 使用了 springSecurityFillterChian 作为了安全过滤的入口, 这一节主要分析一下这个过滤器链都包含了哪些关键的过滤器, 并且各自的使命是什么.
+
+## 4.1 核心过滤器概述
+
+由于过滤器链路中的过滤较多, 即使是 Spring Security 的官方文档中也并未对所有的过滤器进行介绍, 在之前, "Spring Security Guides" 入门指南中我们配置了一个表单登录的 demo, 以此为例, 来看看这过程中 Spring Security 都帮我们自动配置了哪些过滤器.
+
+```
+Creating filter chain: any request, [
+    org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@4beaf6bd, 
+    org.springframework.security.web.context.SecurityContextPersistenceFilter@336206d8, 
+    org.springframework.security.web.header.HeaderWriterFilter@1f0b3cfe, 
+    org.springframework.security.web.csrf.CsrfFilter@2b03d52f, 
+    org.springframework.security.web.authentication.logout.LogoutFilter@46185a1b, 
+    org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter@6eb17ec8, 
+    org.springframework.security.web.savedrequest.RequestCacheAwareFilter@1f11f64e, 
+    org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@4068102e, 
+    org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6b2e46af, 
+    org.springframework.security.web.session.SessionManagementFilter@65a48602, 
+    org.springframework.security.web.access.ExceptionTranslationFilter@42ea287, 
+    org.springframework.security.web.access.intercept.FilterSecurityInterceptor@5633ed82 ]
+```
+
+上述的 log 信息是从 spring boot 启动的日志中 CV 所得, spring security 的过滤器日志有一个特点: log 打印顺序与实际配置顺序符合, 也就意味着 `SecurityContextPersistenceFilter` 是整个过滤器链的第一个过滤器, 而 `FilterSecurityInterceptor` 则是末置的过滤器. 另外通过观察过滤器的名称和所在的包名, 可以大致地分析出他们各自的作用, 如 `UsernamePasswordAuthenticationFilter` 明显便是与使用用户名和密码登录相关的过滤器, 而 `FilterSecurityInterceptor` 我们似乎看不出它的作用, 但是其位于 `web.access` 包下, 大致可以分析出他与访问限制相关. 第4章主要就是介绍这些常用的过滤器, 对其中关键的过滤器进行一些源码分析. 
+
+先大致介绍下每个过滤器的作用:
+
+
+- **`SecurityContextPersistenceFilter`** 两个主要职责:
+  - 请求来临时, 创建 `SecurityContext` 安全上下文信息;
+  - 请求结束时清空 `SecurityContextHolder`;
+- `HeaderWriterFilter` (文档中并未介绍, 非核心过滤器) 用来给 http 响应添加一些 Header, 比如 X-Frame-Options, X-XSS-Protection*, X-Content-Type-Options.
+- `CsrfFilter` 在 spring5 这个版本中被默认开启的一个过滤器, 用于防止 csrf 攻击, 了解前后端分离的人一定不会对这个攻击方式感到陌生, 前后端使用 json 交互需要注意的一个问题.
+- `LogoutFilter` 顾名思义, 处理注销的过滤器
+- **`UsernamePasswordAuthenticationFilter`** 这个会重点分析, 表单提交了 username 和 password, 被封装成 token 进行一系列的认证, 便是主要通过这个过滤器完成的, 在表单认证的方法中, 这是最最关键的过滤器.
+- `RequestCacheAwareFilter` (文档中并未介绍, 非核心过滤器) 内部维护了一个 RequestCache, 用于缓存 request 请求
+- `SecurityContextHolderAwareRequestFilter` 此过滤器对 `ServletRequest` 进行了一次包装, 使得 request 具有更加丰富的 API
+- **`AnonymousAuthenticationFilter`** 匿名身份过滤器, 这个过滤器个人认为很重要, 需要将它与 `UsernamePasswordAuthenticationFilter` 放在一起比较理解, spring security 为了兼容未登录的访问, 也走了一套认证流程, 只不过是一个匿名的身份.
+- `SessionManagementFilter` 和 session 相关的过滤器, 内部维护了一个 SessionAuthenticationStrategy, 两者组合使用, 常用来防止 session-fixation protection attack, 以及限制同一用户开启多个会话的数量.
+- **`ExceptionTranslationFilter`** 直译成异常翻译过滤器, 还是比较形象的, 这个过滤器本身不处理异常, 而是将认证过程中出现的异常交给内部维护的一些类去处理, 具体是那些类下面详细介绍.
+- **`FilterSecurityInterceptor`** 这个过滤器决定了访问特定路径应该具备的权限, 访问的用户的角色, 权限是什么? 访问的路径需要什么样的角色和权限? 这些判断和处理都是由该类进行的.
+
+其中加粗的过滤器可以被认为是 Spring Security 的核心过滤器, 将在下面, 一个过滤器对应一个小节来讲解.
+
+## 4.2 SecurityContextPersistenceFilter
+
+试想一下, 如果我们不使用 Spring Security, 如何保存用户信息呢, 大多数情况下会考虑使用 Session 对吧.   
+在 Spring Security 中也是如此, 用户在登录过一次之后, 后续的访问便是通过 sessionId 来识别, 从而认为用户已经被认证. 具体在何处存放用户信息, 便是第一篇文章中提到的 `SecurityContextHolder`. 认证相关的信息是如何被存放到其中的, 便是通过 `SecurityContextPersistenceFilter`. 在 4.1 概述中也提到了, `SecurityContextPersistenceFilter` 的两个主要作用便是请求来临时, 创建 `SecurityContext` 安全上下文信息和请求结束时清空 `SecurityContextHolder`.   
+顺带提一下: 微服务的一个设计理念需要实现服务通信的无状态, 而 http 协议中的无状态意味着**不允许存在 session**, 这可以通过 **`setAllowSessionCreation(false)`** 实现, 这并不意味着 `SecurityContextPersistenceFilter` 变得无用，因为它还需要**负责清除用户信息**.   
+在 Spring Security 中, 虽然安全上下文信息被存储于 Session 中, 但我们在实际使用中不应该直接操作 Session, 而应当使用 SecurityContextHolder.
+
+### 源码分析
+
+`org.springframework.security.web.context.SecurityContextPersistenceFilter.java`
+
+```java
+public class SecurityContextPersistenceFilter extends GenericFilterBean {
+
+	static final String FILTER_APPLIED = "__spring_security_scpf_applied";
+
+    // 安全上下文存储的仓库
+	private SecurityContextRepository repo;
+
+
+	public SecurityContextPersistenceFilter() {
+        // HttpSessionSecurityContextRepository 是 SecurityContextRepository 接口的一个实现类, 使用 HttpSession 来存储 SecurityContext.
+		this(new HttpSessionSecurityContextRepository());
+	}
+
+	public SecurityContextPersistenceFilter(SecurityContextRepository repo) {
+		this.repo = repo;
+	}
+
+	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+			throws IOException, ServletException {
+		HttpServletRequest request = (HttpServletRequest) req;
+		HttpServletResponse response = (HttpServletResponse) res;
+
+		if (request.getAttribute(FILTER_APPLIED) != null) {     // FILTER_APPLIED = "__spring_security_scpf_applied"
+			// ensure that filter is only applied once per request 确保 对于每个 请求 scpf 只执行一次
+			chain.doFilter(request, response);
+			return;
+		}
+
+		request.setAttribute(FILTER_APPLIED, Boolean.TRUE); // 设置 scpf 的 FILTER_APPLIED 标签, 表示 Filter 已经执行过.
+
+        // 包装 request, response
+		HttpRequestResponseHolder holder = new HttpRequestResponseHolder(request, response);
+		// 从 Session 中获取安全上下文信息
+        SecurityContext contextBeforeChainExecution = repo.loadContext(holder);
+
+		try {
+            // 请求开始时, 设置安全上下文信息, 这样就避免了用户直接从 Session 中获取安全上下文信息
+			SecurityContextHolder.setContext(contextBeforeChainExecution);
+			chain.doFilter(holder.getRequest(), holder.getResponse());
+		}
+		finally {
+            // 请求结束后, 清空安全上下文信息
+			SecurityContext contextAfterChainExecution = SecurityContextHolder.getContext();
+			// Crucial removal of SecurityContextHolder contents - do this before anything else.
+			SecurityContextHolder.clearContext();
+			repo.saveContext(contextAfterChainExecution, holder.getRequest(), holder.getResponse());
+			request.removeAttribute(FILTER_APPLIED);
+			if (debug) {
+				logger.debug("SecurityContextHolder now cleared, as request processing completed");
+			}
+		}
+	}
+}
+```
+
+过滤器一般负责核心的处理流程, 而具体的业务实现, 通常交给其中聚合的其他实体类, 这在 Filter 的设计中很常见, 同时也符合职责分离模式.
+例如存储安全上下文和读取安全上下文的工作完全委托给了 `HttpSessionSecurityContextRepository` 去处理, 而这个类中也有几个方法可以稍微解读下, 方便我们理解内部的工作流程.
+
+`org.springframework.security.web.context.HttpSessionSecurityContextRepository.java`
+
+```java
+public class HttpSessionSecurityContextRepository implements SecurityContextRepository {
+	
+	// The default key under which the security context will be stored in the session. `SPRING_SECURITY_CONTEXT` 是安全上下文默认存储在 Session 中的键值.
+	public static final String SPRING_SECURITY_CONTEXT_KEY = "SPRING_SECURITY_CONTEXT";
+
+	// SecurityContext instance used to check for equality with default (unauthenticated) content
+	private final Object contextObject = SecurityContextHolder.createEmptyContext();
+	private boolean allowSessionCreation = true;
+	private boolean disableUrlRewriting = false;
+	private String springSecurityContextKey = SPRING_SECURITY_CONTEXT_KEY;
+
+	private AuthenticationTrustResolver trustResolver = new AuthenticationTrustResolverImpl();
+
+	/**
+	 * Gets the security context for the current request (if available) and returns it.
+	 * If the session is null, the context object is null or the context object stored in the session is not an instance of SecurityContext, 
+     * a new context object will be generated and returned.
+     * 从当前 request 中取出安全上下文, 如果 session 为空, 则会返回一个新的安全上下文.
+	 */
+	public SecurityContext loadContext(HttpRequestResponseHolder requestResponseHolder) {
+		HttpServletRequest request = requestResponseHolder.getRequest();
+		HttpServletResponse response = requestResponseHolder.getResponse();
+		HttpSession httpSession = request.getSession(false);
+
+		SecurityContext context = readSecurityContextFromSession(httpSession);
+
+		if (context == null) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("No SecurityContext was available from the HttpSession: "
+						+ httpSession + ". " + "A new one will be created.");
+			}
+			context = generateNewContext();
+
+		}
+        // ...
+		return context;
+	}
+    // ...
+
+    // 判断 request 中是否存在 context
+	public boolean containsContext(HttpServletRequest request) {
+		HttpSession session = request.getSession(false);
+		if (session == null) {
+			return false;
+		}
+		return session.getAttribute(springSecurityContextKey) != null;
+	}
+
+
+	 // param httpSession: the session obtained from the request.
+	private SecurityContext readSecurityContextFromSession(HttpSession httpSession) {
+		final boolean debug = logger.isDebugEnabled();
+		if (httpSession == null) {
+			if (debug) {
+				logger.debug("No HttpSession currently exists");
+			}
+			return null;
+		}
+
+		// Session exists, so try to obtain a context from it. Session 存在的情况下, 尝试获取其中的 SecurityContext.
+		Object contextFromSession = httpSession.getAttribute(springSecurityContextKey);
+		if (contextFromSession == null) {
+			if (debug) {
+				logger.debug("HttpSession returned null object for SPRING_SECURITY_CONTEXT");
+			}
+			return null;
+		}
+        // ...
+		return (SecurityContext) contextFromSession;
+	}
+
+	/**
+	 * By default, callsSecurityContextHolder#createEmptyContext() to obtain a new context (there should be no context present in the holder when this method is
+	 * called). Using this approach the context creation strategy is decided by the SecurityContextHolderStrategy in use. The default implementations will
+	 * return a new SecurityContextImpl.
+	 * 初次请求时创建一个新的 SecurityContext 实例
+	 * @return a new SecurityContext instance. Never null.
+	 */
+	protected SecurityContext generateNewContext() {
+		return SecurityContextHolder.createEmptyContext();
+	}
+    // ...
+}
+```
+
+`SecurityContextPersistenceFilter` 和 `HttpSessionSecurityContextRepository` 配合使用, 构成了 Spring Security 整个调用链路的入口, 为什么将它放在最开始的地方也是显而易见的, 后续的过滤器中大概率会依赖 Session 信息和安全上下文信息.
+
+## 4.3 UsernamePasswordAuthenticationFilter
+
+表单认证是最常用的一个认证方式, 一个最直观的业务场景便是允许用户在表单中输入用户名和密码进行登录, 而这背后的 `UsernamePasswordAuthenticationFilter`, 在整个 Spring Security 的认证体系中则扮演着至关重要的角色.
+
+![authentication 时序图](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP4-3-3_authentication_sequence_chart.jpg?raw=true)
+
+上述的时序图, 可以看出 `UsernamePasswordAuthenticationFilter` 主要肩负起了调用身份认证器校验身份的作用, 至于认证的细节, 在前面几章花了很大篇幅进行了介绍, 到这里其实 Spring Security 的基本流程就已经走通了.
+
+### 源码分析
+
+`org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter#attemptAuthentication()`
+
+```java
+public class UsernamePasswordAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
+    // ...
+	public UsernamePasswordAuthenticationFilter() {
+		super(new AntPathRequestMatcher("/login", "POST"));
+	}
+
+	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+		if (postOnly && !request.getMethod().equals("POST")) {
+			throw new AuthenticationServiceException(
+					"Authentication method not supported: " + request.getMethod());
+		}
+
+        // 获取表单中的用户名密码
+		String username = obtainUsername(request);
+		String password = obtainPassword(request);
+        // ...
+		username = username.trim();
+		UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(username, password);
+		// Allow subclasses to set the "details" property
+		setDetails(request, authRequest);
+		return this.getAuthenticationManager().authenticate(authRequest);
+	}
+}
+```
 
 ---
