@@ -8,36 +8,43 @@
 <!-- TOC -->
 
 - [1 Spring Security Architecture Overview 核心组件](#1-spring-security-architecture-overview-%e6%a0%b8%e5%bf%83%e7%bb%84%e4%bb%b6)
-  - [1.1 SecurityContextHolder](#11-securitycontextholder)
-    - [获取当前用户的信息](#%e8%8e%b7%e5%8f%96%e5%bd%93%e5%89%8d%e7%94%a8%e6%88%b7%e7%9a%84%e4%bf%a1%e6%81%af)
-  - [1.2 Authentication](#12-authentication)
-    - [Spring Security 是如何完成身份认证的](#spring-security-%e6%98%af%e5%a6%82%e4%bd%95%e5%ae%8c%e6%88%90%e8%ba%ab%e4%bb%bd%e8%ae%a4%e8%af%81%e7%9a%84)
-  - [1.3 AuthenticationManager](#13-authenticationmanager)
-  - [1.4 DaoAuthenticationProvider](#14-daoauthenticationprovider)
-  - [1.5 UserDetails 与 UserDetailsService](#15-userdetails-%e4%b8%8e-userdetailsservice)
-  - [1.6 架构概览图](#16-%e6%9e%b6%e6%9e%84%e6%a6%82%e8%a7%88%e5%9b%be)
+	- [1.1 SecurityContextHolder](#11-securitycontextholder)
+		- [获取当前用户的信息](#%e8%8e%b7%e5%8f%96%e5%bd%93%e5%89%8d%e7%94%a8%e6%88%b7%e7%9a%84%e4%bf%a1%e6%81%af)
+	- [1.2 Authentication](#12-authentication)
+		- [Spring Security 是如何完成身份认证的](#spring-security-%e6%98%af%e5%a6%82%e4%bd%95%e5%ae%8c%e6%88%90%e8%ba%ab%e4%bb%bd%e8%ae%a4%e8%af%81%e7%9a%84)
+	- [1.3 AuthenticationManager](#13-authenticationmanager)
+	- [1.4 DaoAuthenticationProvider](#14-daoauthenticationprovider)
+	- [1.5 UserDetails 与 UserDetailsService](#15-userdetails-%e4%b8%8e-userdetailsservice)
+	- [1.6 架构概览图](#16-%e6%9e%b6%e6%9e%84%e6%a6%82%e8%a7%88%e5%9b%be)
 - [2 Spring Security Guides](#2-spring-security-guides)
-  - [2.1 引入依赖](#21-%e5%bc%95%e5%85%a5%e4%be%9d%e8%b5%96)
-  - [2.2 创建一个不受安全限制的 web 应用](#22-%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa%e4%b8%8d%e5%8f%97%e5%ae%89%e5%85%a8%e9%99%90%e5%88%b6%e7%9a%84-web-%e5%ba%94%e7%94%a8)
-  - [2.3 配置 Spring Security](#23-%e9%85%8d%e7%bd%ae-spring-security)
-  - [2.4 添加启动类](#24-%e6%b7%bb%e5%8a%a0%e5%90%af%e5%8a%a8%e7%b1%bb)
-  - [2.5 测试](#25-%e6%b5%8b%e8%af%95)
-  - [2.6 总结](#26-%e6%80%bb%e7%bb%93)
+	- [2.1 引入依赖](#21-%e5%bc%95%e5%85%a5%e4%be%9d%e8%b5%96)
+	- [2.2 创建一个不受安全限制的 web 应用](#22-%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa%e4%b8%8d%e5%8f%97%e5%ae%89%e5%85%a8%e9%99%90%e5%88%b6%e7%9a%84-web-%e5%ba%94%e7%94%a8)
+	- [2.3 配置 Spring Security](#23-%e9%85%8d%e7%bd%ae-spring-security)
+	- [2.4 添加启动类](#24-%e6%b7%bb%e5%8a%a0%e5%90%af%e5%8a%a8%e7%b1%bb)
+	- [2.5 测试](#25-%e6%b5%8b%e8%af%95)
+	- [2.6 总结](#26-%e6%80%bb%e7%bb%93)
 - [3. Spring Security 核心配置解读](#3-spring-security-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
-  - [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
-  - [3.2 @EnableWebSecurity](#32-enablewebsecurity)
-    - [WebSecurityConfiguration](#websecurityconfiguration)
-    - [AuthenticationConfiguration](#authenticationconfiguration)
-  - [3.3 WebSecurityConfigurerAdapter](#33-websecurityconfigureradapter)
-    - [HttpSecurity 常用配置](#httpsecurity-%e5%b8%b8%e7%94%a8%e9%85%8d%e7%bd%ae)
-    - [WebSecurityBuilder](#websecuritybuilder)
-    - [AuthenticationManagerBuilder](#authenticationmanagerbuilder)
+	- [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
+	- [3.2 @EnableWebSecurity](#32-enablewebsecurity)
+		- [WebSecurityConfiguration](#websecurityconfiguration)
+		- [AuthenticationConfiguration](#authenticationconfiguration)
+	- [3.3 WebSecurityConfigurerAdapter](#33-websecurityconfigureradapter)
+		- [HttpSecurity 常用配置](#httpsecurity-%e5%b8%b8%e7%94%a8%e9%85%8d%e7%bd%ae)
+		- [WebSecurityBuilder](#websecuritybuilder)
+		- [AuthenticationManagerBuilder](#authenticationmanagerbuilder)
 - [4 Spring Security 核心过滤器源码分析](#4-spring-security-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90)
-  - [4.1 核心过滤器概述](#41-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%a6%82%e8%bf%b0)
-  - [4.2 SecurityContextPersistenceFilter](#42-securitycontextpersistencefilter)
-    - [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90)
-  - [4.3 UsernamePasswordAuthenticationFilter](#43-usernamepasswordauthenticationfilter)
-    - [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-1)
+	- [4.1 核心过滤器概述](#41-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%a6%82%e8%bf%b0)
+	- [4.2 SecurityContextPersistenceFilter](#42-securitycontextpersistencefilter)
+		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90)
+	- [4.3 UsernamePasswordAuthenticationFilter](#43-usernamepasswordauthenticationfilter)
+		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-1)
+	- [4.4 AnonymousAuthenticationFilter](#44-anonymousauthenticationfilter)
+		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-2)
+	- [4.5 ExceptionTranslationFilter](#45-exceptiontranslationfilter)
+		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-3)
+	- [4.6 FilterSecurityInterceptor](#46-filtersecurityinterceptor)
+	- [总结](#%e6%80%bb%e7%bb%93)
+	- [本章在介绍过滤器时, 顺便进行了一些源码的分析, 目的是方便理解整个 Spring Security 的工作流. 伴随着整个过滤器链的介绍, 安全框架的轮廓应该已经浮出水面了, 下面的章节, 主要打算通过自定义一些需求, 再次分析其他组件的源码, 学习应该如何改造 Spring Security, 为我们所用.](#%e6%9c%ac%e7%ab%a0%e5%9c%a8%e4%bb%8b%e7%bb%8d%e8%bf%87%e6%bb%a4%e5%99%a8%e6%97%b6-%e9%a1%ba%e4%be%bf%e8%bf%9b%e8%a1%8c%e4%ba%86%e4%b8%80%e4%ba%9b%e6%ba%90%e7%a0%81%e7%9a%84%e5%88%86%e6%9e%90-%e7%9b%ae%e7%9a%84%e6%98%af%e6%96%b9%e4%be%bf%e7%90%86%e8%a7%a3%e6%95%b4%e4%b8%aa-spring-security-%e7%9a%84%e5%b7%a5%e4%bd%9c%e6%b5%81-%e4%bc%b4%e9%9a%8f%e7%9d%80%e6%95%b4%e4%b8%aa%e8%bf%87%e6%bb%a4%e5%99%a8%e9%93%be%e7%9a%84%e4%bb%8b%e7%bb%8d-%e5%ae%89%e5%85%a8%e6%a1%86%e6%9e%b6%e7%9a%84%e8%bd%ae%e5%bb%93%e5%ba%94%e8%af%a5%e5%b7%b2%e7%bb%8f%e6%b5%ae%e5%87%ba%e6%b0%b4%e9%9d%a2%e4%ba%86-%e4%b8%8b%e9%9d%a2%e7%9a%84%e7%ab%a0%e8%8a%82-%e4%b8%bb%e8%a6%81%e6%89%93%e7%ae%97%e9%80%9a%e8%bf%87%e8%87%aa%e5%ae%9a%e4%b9%89%e4%b8%80%e4%ba%9b%e9%9c%80%e6%b1%82-%e5%86%8d%e6%ac%a1%e5%88%86%e6%9e%90%e5%85%b6%e4%bb%96%e7%bb%84%e4%bb%b6%e7%9a%84%e6%ba%90%e7%a0%81-%e5%ad%a6%e4%b9%a0%e5%ba%94%e8%af%a5%e5%a6%82%e4%bd%95%e6%94%b9%e9%80%a0-spring-security-%e4%b8%ba%e6%88%91%e4%bb%ac%e6%89%80%e7%94%a8)
 
 <!-- /TOC -->
 
@@ -1059,12 +1066,341 @@ public class UsernamePasswordAuthenticationFilter extends AbstractAuthentication
 		String password = obtainPassword(request);
         // ...
 		username = username.trim();
+
+        // 组装成 username + password 形式的 token
 		UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(username, password);
 		// Allow subclasses to set the "details" property
 		setDetails(request, authRequest);
+        // 交给内部的 AuthenticationManager 去认证, 并返回认证信息.
 		return this.getAuthenticationManager().authenticate(authRequest);
 	}
 }
 ```
 
+`UsernamePasswordAuthenticationFilter` 本身的代码只包含了上述这么一个方法, 非常简略, 而在其父类 `AbstractAuthenticationProcessingFilter` 中包含了大量的细节, 值得我们分析:
+
+`org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.java`
+
+```java
+
+public abstract class AbstractAuthenticationProcessingFilter extends GenericFilterBean
+		implements ApplicationEventPublisherAware, MessageSourceAware {
+    
+    // ...
+    // 包含了一个身份认证器
+    private AuthenticationManager authenticationManager;
+    // 用于实现 rememberMe
+    private RememberMeServices rememberMeServices = new NullRememberMeServices();
+	private RequestMatcher requiresAuthenticationRequestMatcher;
+    // 这两个 Handler 很关键, 分别别代表了认证成功和失败相应的处理器.
+	private AuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
+	private AuthenticationFailureHandler failureHandler = new SimpleUrlAuthenticationFailureHandler();
+    // ...
+
+	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+			throws IOException, ServletException {
+
+		HttpServletRequest request = (HttpServletRequest) req;
+		HttpServletResponse response = (HttpServletResponse) res;
+        // ...
+		Authentication authResult;
+		try {
+            // 此处实际上就是调用 UsernamePasswordAuthenticationFilter 的 attemptAuthentication 方法
+			authResult = attemptAuthentication(request, response);
+			if (authResult == null) {
+				// 子类未完成认证, 立刻返回
+				// return immediately as subclass has indicated that it hasn't completed authentication
+				return;
+			}
+			// 保存 认证结果身份信息到 sessionStrategy
+			sessionStrategy.onAuthentication(authResult, request, response);
+		}
+		// 在认证过程中可以直接抛出异常, 在过滤器中, 就像此处一样, 进行捕获
+		catch (InternalAuthenticationServiceException failed) {
+			// 内部服务异常
+			unsuccessfulAuthentication(request, response, failed);
+			return;
+		}
+		catch (AuthenticationException failed) {
+			// Authentication failed 认证失败
+			unsuccessfulAuthentication(request, response, failed);
+			return;
+		}
+		// Authentication success 认证成功
+		if (continueChainBeforeSuccessfulAuthentication) {
+			chain.doFilter(request, response);
+		}
+		// 注意, 认证成功后过滤器把 authResult 结果也产地给了成功处理器.
+		successfulAuthentication(request, response, chain, authResult);
+	}
+}
+```
+
+整个流程理解起来也并不难, 主要就是内部调用了 `authenticationManager` 完成认证, 根据认证结果执行 `successfulAuthentication` 或者 `unsuccessfulAuthentication`, 无论成功失败, 一般的实现都是转发或者重定向等处理, 不再细究 `AuthenticationSuccessHandler` 和 `AuthenticationFailureHandler`, 有兴趣的朋友, 可以去看看两者的实现类.
+
+
+## 4.4 AnonymousAuthenticationFilter
+
+匿名认证过滤器, 可能有人会想: 匿名了还有身份? 我自己对于 Anonymous 匿名身份的理解是 Spirng Security 为了整体逻辑的统一性, 即使是未通过认证的用户, 也给予了一个匿名身份. 而 `AnonymousAuthenticationFilter` 该过滤器的位置也是非常的科学的, 它位于常用的身份认证过滤器 (如 `UsernamePasswordAuthenticationFilter`, `BasicAuthenticationFilter`, `RememberMeAuthenticationFilter`) 之后, 意味着只有在上述身份过滤器执行完毕后, SecurityContext 依旧没有用户信息, `AnonymousAuthenticationFilter` 该过滤器才会有意义 -- 给与用户一个匿名身份.
+
+### 源码分析
+
+`org.springframework.security.web.authentication.AnonymousAuthenticationFilter.java`
+
+```java
+
+public class AnonymousAuthenticationFilter extends GenericFilterBean implements
+		InitializingBean {
+
+	private AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
+	private String key;
+	private Object principal;
+	private List<GrantedAuthority> authorities;
+
+	// 自动创建一个 "anonymousUser" 的匿名用户, 其具有 ANONYMOUS 角色.
+	public AnonymousAuthenticationFilter(String key) {
+		this(key, "anonymousUser", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"));
+	}
+
+	/**
+	 * @param key key the key to identify tokens created by this filter. 用来识别该过滤器创建的身份
+	 * @param principal the principal which will be used to represent anonymous users. 代表匿名用户的身份
+	 * @param authorities the authority list for anonymous users 代表匿名用户的权限集合
+	 */
+	public AnonymousAuthenticationFilter(String key, Object principal,
+			List<GrantedAuthority> authorities) {
+		Assert.hasLength(key, "key cannot be null or empty");
+		Assert.notNull(principal, "Anonymous authentication principal must be set");
+		Assert.notNull(authorities, "Anonymous authorities must be set");
+		this.key = key;
+		this.principal = principal;
+		this.authorities = authorities;
+	}
+
+	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+			throws IOException, ServletException {
+		// 过滤器链都执行到匿名认证过滤器这了还灭有身份信息, 塞一个匿名身份进去.
+		if (SecurityContextHolder.getContext().getAuthentication() == null) {
+			SecurityContextHolder.getContext().setAuthentication(
+					createAuthentication((HttpServletRequest) req));
+		}
+		chain.doFilter(req, res);
+	}
+
+	protected Authentication createAuthentication(HttpServletRequest request) {
+		// 创建一个 AnonymousAuthenticationToken
+		AnonymousAuthenticationToken auth = new AnonymousAuthenticationToken(key,
+				principal, authorities);
+		auth.setDetails(authenticationDetailsSource.buildDetails(request));
+		return auth;
+	}
+}
+```
+
+其实对比 `AnonymousAuthenticationFilter` 和 `UsernamePasswordAuthenticationFilter` 就可以发现一些门道了, `UsernamePasswordAuthenticationToken` 对应 `AnonymousAuthenticationToken`, 他们都是 `Authentication` 的实现类, 而 `Authentication` 则是被 `SecurityContextHolder(SecurityContext)` 持有的, 一切都被串联在了一起.
+
+## 4.5 ExceptionTranslationFilter
+
+`ExceptionTranslationFilter` 异常转换过滤器位于整个 `springSecurityFilterChain` 的后方, 用来转换整个链路中出现的异常, 将其转化，顾名思义，转化以意味本身并不处理. 一般其只处理两大类异常: `AccessDeniedException` 访问异常和 `AuthenticationException` 认证异常.
+
+这个过滤器非常重要, 因为它将 Java 中的异常和 HTTP 的响应连接在了一起, 这样在处理异常时, 我们不用考虑密码错误该跳到什么页面, 账号锁定该如何, 只需要关注自己的业务逻辑, 抛出相应的异常便可. 如果该过滤器检测到 `AuthenticationException`, 则将会交给内部的 `AuthenticationEntryPoint` 去处理, 如果检测到 `AccessDeniedException`, 需要先判断当前用户是不是匿名用户, 如果是匿名访问, 则和前面一样运行 `AuthenticationEntryPoint`, 否则会委托给 `AccessDeniedHandler` 去处理, 而 `AccessDeniedHandler` 的默认实现, 是 `AccessDeniedHandlerImpl`. 所以 `ExceptionTranslationFilter` 内部的 `AuthenticationEntryPoint` 是至关重要的, 顾名思义: 认证的入口点.
+
+### 源码分析
+
+`org.springframework.security.web.access.ExceptionTranslationFilter.java`
+
+```java 
+public class ExceptionTranslationFilter extends GenericFilterBean {
+
+	// ...
+	private AccessDeniedHandler accessDeniedHandler = new AccessDeniedHandlerImpl();
+	private AuthenticationEntryPoint authenticationEntryPoint;
+	private AuthenticationTrustResolver authenticationTrustResolver = new AuthenticationTrustResolverImpl();
+	private RequestCache requestCache = new HttpSessionRequestCache();
+
+	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+			throws IOException, ServletException {
+		HttpServletRequest request = (HttpServletRequest) req;
+		HttpServletResponse response = (HttpServletResponse) res;
+
+		try {
+			chain.doFilter(request, response);
+		}
+		catch (IOException ex) {
+			throw ex;
+		}
+		catch (Exception ex) {
+			// Try to extract a SpringSecurityException from the stacktrace
+			Throwable[] causeChain = throwableAnalyzer.determineCauseChain(ex);
+			RuntimeException ase = (AuthenticationException) throwableAnalyzer
+					.getFirstThrowableOfType(AuthenticationException.class, causeChain);
+			if (ase == null) {
+				ase = (AccessDeniedException) throwableAnalyzer.getFirstThrowableOfType(
+						AccessDeniedException.class, causeChain);
+			}
+
+			if (ase != null) {
+				if (response.isCommitted()) {
+					throw new ServletException("Unable to handle the Spring Security Exception because the response is already committed.", ex);
+				}
+				handleSpringSecurityException(request, response, chain, ase);
+			}
+			else {
+				// Rethrow ServletExceptions and RuntimeExceptions as-is
+				if (ex instanceof ServletException) {
+					throw (ServletException) ex;
+				}
+				else if (ex instanceof RuntimeException) {
+					throw (RuntimeException) ex;
+				}
+				// Wrap other Exceptions. This shouldn't actually happen
+				// as we've already covered all the possibilities for doFilter
+				throw new RuntimeException(ex);
+			}
+		}
+	}
+
+	// 处理异常转换的核心方法
+	private void handleSpringSecurityException(HttpServletRequest request,
+			HttpServletResponse response, FilterChain chain, RuntimeException exception)
+			throws IOException, ServletException {
+		if (exception instanceof AuthenticationException) {
+			// 重定向到登录端点
+			sendStartAuthentication(request, response, chain, (AuthenticationException) exception);
+		}
+		else if (exception instanceof AccessDeniedException) {
+			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			if (authenticationTrustResolver.isAnonymous(authentication) || authenticationTrustResolver.isRememberMe(authentication)) {
+				// 重定向到登录端点
+				sendStartAuthentication(request, response, chain,
+						new InsufficientAuthenticationException(
+							messages.getMessage(
+								"ExceptionTranslationFilter.insufficientAuthentication",
+								"Full authentication is required to access this resource")));
+			}
+			else {
+				// 交给 accessDeniedHandler 处理
+				accessDeniedHandler.handle(request, response, (AccessDeniedException) exception);
+			}
+		}
+	}
+}
+```
+
+剩下的便是要搞懂 `AuthenticationEntryPoint` 和 `AccessDeniedHandler` 就可以了.
+
+![authentication 时序图](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP4-4-5_AuthenticationEntryPoint_inheritance.png?raw=true)
+
+选择了几个常用的登录端点, 以其中第一个为例来介绍, 看名字就能猜到是认证失败之后, 让用户跳转到登录页面. 还记得我们一开始怎么配置表单登录页面的吗?
+
+```java
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/", "/home").permitAll()
+                .anyRequest().authenticated()
+                .and()
+            .formLogin()	// FormLoginConfigurer
+                .loginPage("/login")
+                .permitAll()
+                .and()
+            .logout()
+                .permitAll();
+    }
+}
+```
+
+我们顺着 `formLogin` 返回的 `FormLoginConfigurer` 往下找，看看能发现什么，最终在 `FormLoginConfigurer` 的父类 `AbstractAuthenticationFilterConfigurer` 中有了不小的收获:
+
+`org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer.java`
+```java 
+public abstract class AbstractAuthenticationFilterConfigurer<B extends HttpSecurityBuilder<B>, T extends AbstractAuthenticationFilterConfigurer<B, T, F>, F extends AbstractAuthenticationProcessingFilter>
+		extends AbstractHttpConfigurer<T, B> {
+
+	// ...
+	// formLogin 不出所料配置了 AuthenticationEntryPoint
+	private LoginUrlAuthenticationEntryPoint authenticationEntryPoint;
+
+	// 认证失败的处理器
+	private AuthenticationFailureHandler failureHandler;
+	// ...
+}
+```
+
+具体如何配置的就不看了, 我们得出了结论, `formLogin()` 配置了之后最起码做了两件事, 
+1. 为 `UsernamePasswordAuthenticationFilter` 设置了相关的配置;
+2. 配置了 `AuthenticationEntryPoint`;
+
+登录端点还有 `Http401AuthenticationEntryPoint`, `Http403ForbiddenEntryPoint` 这些都是很简单的实现, 有时候我们访问受限页面, 又没有配置登录, 就看到了一个空荡荡的默认错误页面, 上面显示着 401, 403 就是这两个入口起了作用.
+
+还剩下一个 `AccessDeniedHandler` 访问决策器未被讲解, 简单提一下: `AccessDeniedHandlerImpl` 这个默认实现类会根据 `errorPage` 和状态码来判断, 最终决定跳转的页面
+
+`org.springframework.security.web.access.AccessDeniedHandlerImpl.java`
+```java
+
+public class AccessDeniedHandlerImpl implements AccessDeniedHandler {
+	// ...
+	public void handle(HttpServletRequest request, HttpServletResponse response,
+			AccessDeniedException accessDeniedException) throws IOException,
+			ServletException {
+		if (!response.isCommitted()) {
+			if (errorPage != null) {
+				// Put exception into request scope (perhaps of use to a view)
+				request.setAttribute(WebAttributes.ACCESS_DENIED_403,
+						accessDeniedException);
+
+				// Set the 403 status code.
+				response.setStatus(HttpStatus.FORBIDDEN.value());
+
+				// forward to error page.
+				RequestDispatcher dispatcher = request.getRequestDispatcher(errorPage);
+				dispatcher.forward(request, response);
+			}
+			else {
+				response.sendError(HttpStatus.FORBIDDEN.value(),
+					HttpStatus.FORBIDDEN.getReasonPhrase());
+			}
+		}
+	}
+	// ...
+}
+```
+
+## 4.6 FilterSecurityInterceptor
+
+想想整个认证安全控制流程还缺了什么? 我们已经有了认证, 有了请求的封装, 有了 Session 的关联. 还缺一个: 由什么控制哪些资源是受限的, 这些受限的资源需要什么权限, 需要什么角色. 这一切和访问控制相关的操作, 都是由 `FilterSecurityInterceptor` 完成的.
+
+`FilterSecurityInterceptor` 的工作流程可以理解如下: `FilterSecurityInterceptor` 从 `SecurityContextHolder` 中获取 `Authentication` 对象, 然后比对用户拥有的权限和资源所需的权限. 前者可以通过 `Authentication` 对象直接获得, 而后者则需要引入我们之前一直未提到过的两个类: `SecurityMetadataSource`, `AccessDecisionManager`. 理解清楚决策管理器的整个创建流程和 `SecurityMetadataSource` 的作用需要花很大一笔功夫, 这里, 暂时只介绍其大概的作用.
+
+在 JavaConfig 的配置中, 我们通常如下配置路径的访问控制:
+
+```java
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+	http
+		.authorizeRequests()
+			.antMatchers("/resources/**", "/signup", "/about").permitAll()
+            .antMatchers("/admin/**").hasRole("ADMIN")
+            .antMatchers("/db/**").access("hasRole('ADMIN') and hasRole('DBA')")
+            .anyRequest().authenticated()
+			.withObjectPostProcessor(new ObjectPostProcessor<FilterSecurityInterceptor>() {
+				public <O extends FilterSecurityInterceptor> O postProcess(O fsi) {
+					//fsi.setPublishAuthorizationSuccess(true);
+					fsi.setAccessDecisionManager(customUrlDecisionManager);
+                    fsi.setSecurityMetadataSource(customFilterInvocationSecurityMetadataSource);
+					return fsi;
+				}
+			});
+}
+```
+
+在 `ObjectPostProcessor` 的泛型中看到了 `FilterSecurityInterceptor`, 可以在其中配置 `SecurityMetadataSource`, `AccessDecisionManager` .
+
+## 总结
+本章在介绍过滤器时, 顺便进行了一些源码的分析, 目的是方便理解整个 Spring Security 的工作流. 伴随着整个过滤器链的介绍, 安全框架的轮廓应该已经浮出水面了, 下面的章节, 主要打算通过自定义一些需求, 再次分析其他组件的源码, 学习应该如何改造 Spring Security, 为我们所用.
 ---
