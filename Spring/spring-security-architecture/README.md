@@ -44,7 +44,6 @@
 		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-3)
 	- [4.6 FilterSecurityInterceptor](#46-filtersecurityinterceptor)
 	- [总结](#%e6%80%bb%e7%bb%93)
-	- [本章在介绍过滤器时, 顺便进行了一些源码的分析, 目的是方便理解整个 Spring Security 的工作流. 伴随着整个过滤器链的介绍, 安全框架的轮廓应该已经浮出水面了, 下面的章节, 主要打算通过自定义一些需求, 再次分析其他组件的源码, 学习应该如何改造 Spring Security, 为我们所用.](#%e6%9c%ac%e7%ab%a0%e5%9c%a8%e4%bb%8b%e7%bb%8d%e8%bf%87%e6%bb%a4%e5%99%a8%e6%97%b6-%e9%a1%ba%e4%be%bf%e8%bf%9b%e8%a1%8c%e4%ba%86%e4%b8%80%e4%ba%9b%e6%ba%90%e7%a0%81%e7%9a%84%e5%88%86%e6%9e%90-%e7%9b%ae%e7%9a%84%e6%98%af%e6%96%b9%e4%be%bf%e7%90%86%e8%a7%a3%e6%95%b4%e4%b8%aa-spring-security-%e7%9a%84%e5%b7%a5%e4%bd%9c%e6%b5%81-%e4%bc%b4%e9%9a%8f%e7%9d%80%e6%95%b4%e4%b8%aa%e8%bf%87%e6%bb%a4%e5%99%a8%e9%93%be%e7%9a%84%e4%bb%8b%e7%bb%8d-%e5%ae%89%e5%85%a8%e6%a1%86%e6%9e%b6%e7%9a%84%e8%bd%ae%e5%bb%93%e5%ba%94%e8%af%a5%e5%b7%b2%e7%bb%8f%e6%b5%ae%e5%87%ba%e6%b0%b4%e9%9d%a2%e4%ba%86-%e4%b8%8b%e9%9d%a2%e7%9a%84%e7%ab%a0%e8%8a%82-%e4%b8%bb%e8%a6%81%e6%89%93%e7%ae%97%e9%80%9a%e8%bf%87%e8%87%aa%e5%ae%9a%e4%b9%89%e4%b8%80%e4%ba%9b%e9%9c%80%e6%b1%82-%e5%86%8d%e6%ac%a1%e5%88%86%e6%9e%90%e5%85%b6%e4%bb%96%e7%bb%84%e4%bb%b6%e7%9a%84%e6%ba%90%e7%a0%81-%e5%ad%a6%e4%b9%a0%e5%ba%94%e8%af%a5%e5%a6%82%e4%bd%95%e6%94%b9%e9%80%a0-spring-security-%e4%b8%ba%e6%88%91%e4%bb%ac%e6%89%80%e7%94%a8)
 
 <!-- /TOC -->
 
@@ -1402,5 +1401,7 @@ protected void configure(HttpSecurity http) throws Exception {
 在 `ObjectPostProcessor` 的泛型中看到了 `FilterSecurityInterceptor`, 可以在其中配置 `SecurityMetadataSource`, `AccessDecisionManager` .
 
 ## 总结
+
 本章在介绍过滤器时, 顺便进行了一些源码的分析, 目的是方便理解整个 Spring Security 的工作流. 伴随着整个过滤器链的介绍, 安全框架的轮廓应该已经浮出水面了, 下面的章节, 主要打算通过自定义一些需求, 再次分析其他组件的源码, 学习应该如何改造 Spring Security, 为我们所用.
+
 ---
