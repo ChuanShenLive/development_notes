@@ -44,6 +44,8 @@
 		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-3)
 	- [4.6 FilterSecurityInterceptor](#46-filtersecurityinterceptor)
 	- [总结](#%e6%80%bb%e7%bb%93)
+- [动手实现一个 IP_Login](#%e5%8a%a8%e6%89%8b%e5%ae%9e%e7%8e%b0%e4%b8%80%e4%b8%aa-iplogin)
+	- [5.1 定义需求](#51-%e5%ae%9a%e4%b9%89%e9%9c%80%e6%b1%82)
 
 <!-- /TOC -->
 
@@ -1403,5 +1405,27 @@ protected void configure(HttpSecurity http) throws Exception {
 ## 总结
 
 本章在介绍过滤器时, 顺便进行了一些源码的分析, 目的是方便理解整个 Spring Security 的工作流. 伴随着整个过滤器链的介绍, 安全框架的轮廓应该已经浮出水面了, 下面的章节, 主要打算通过自定义一些需求, 再次分析其他组件的源码, 学习应该如何改造 Spring Security, 为我们所用.
+
+---
+
+# 动手实现一个 IP_Login
+
+思考下为什么需要搞清楚 Spring Security 的内部工作原理? 按照第二章中的配置, 一个简单的表单认证不就达成了吗? 更有甚者, 为什么我们不自己写一个表单认证, 用过滤器即可完成, 大费周章引入 Spring Security，看起来也并没有方便多少. 对的, 在引入 Spring Security 之前, 我们得首先想到, 是什么需求让我们引入了 Spring Security, 以及为什么是 Spring Security, 而不是 shiro 等等其他安全框架. 我的理解是有如下几点: 
+
+1. Spring Security 支持防止 csrf 攻击, session-fixation protection, 支持表单认证, basic 认证, rememberMe 等等一些特性, 有很多是开箱即用的功能, 而大多特性都可以通过配置灵活的变更.
+2. Spring Security 的兄弟的项目 Spring Security SSO, OAuth2 等支持了多种协议, 而这些都是基于 Spring Security 的, 方便了项目的扩展.
+3. Spring Boot 的支持, 更加保证了 Spring Security 的开箱即用.
+4. 为什么需要理解其内部工作原理? 一个有自我追求的程序员都不会满足于浅尝辄止, 如果一个开源技术在我们的日常工作中十分常用, 那么我偏向于阅读其源码, 这样既可以可以让我们便于排查不期而至的问题, 也方便日后需求扩展.
+5. Spring 及其子项目的官方文档是我见过的最良心的文档!
+
+为了对之前分析的 Spring Security 源码和组件有一个清晰的认识, 介绍一个使用 IP 完成登录的简单 demo.
+
+## 5.1 定义需求
+
+在表单登录中, 一般使用数据库中配置的用户表, 权限表, 角色表, 权限组表... 这取决于你的权限粒度, 但本质都是借助了一个持久化存储, 维护了用户的角色权限, 而后给出一个 `/login` 作为登录端点, 使用表单提交用户名和密码, 而后完成登录后可自由访问受限页面.
+
+在我们的 IP 登录 demo 中, 也是类似的, 使用 IP 地址作为身份, 内存中的一个 ConcurrentHashMap 维护 IP 地址和权限的映射, 如果在认证时找不到相应的权限, 则认为认证失败.
+
+实际上, 在表单登录中, 用户的 IP 地址已经被存放在 `Authentication.getDetails()` 中了, 完全可以只重写一个 `AuthenticationProvider` 认证这个 IP 地址即可, 但本 demo 是为了理清 Spring Security 内部工作原理而设置, 为了设计到更多的类, 完全重写了 IP 过滤器.
 
 ---
