@@ -46,6 +46,11 @@
 	- [总结](#%e6%80%bb%e7%bb%93)
 - [动手实现一个 IP_Login](#%e5%8a%a8%e6%89%8b%e5%ae%9e%e7%8e%b0%e4%b8%80%e4%b8%aa-iplogin)
 	- [5.1 定义需求](#51-%e5%ae%9a%e4%b9%89%e9%9c%80%e6%b1%82)
+	- [5.2 设计概述](#52-%e8%ae%be%e8%ae%a1%e6%a6%82%e8%bf%b0)
+	- [5.3 IpAuthenticationToken](#53-ipauthenticationtoken)
+	- [5.4 IpAuthenticationProcessingFilter](#54-ipauthenticationprocessingfilter)
+	- [5.5 IpAuthenticationProvider](#55-ipauthenticationprovider)
+	- [5.6 配置 WebSecurityConfigAdapter](#56-%e9%85%8d%e7%bd%ae-websecurityconfigadapter)
 
 <!-- /TOC -->
 
@@ -1427,5 +1432,124 @@ protected void configure(HttpSecurity http) throws Exception {
 在我们的 IP 登录 demo 中, 也是类似的, 使用 IP 地址作为身份, 内存中的一个 ConcurrentHashMap 维护 IP 地址和权限的映射, 如果在认证时找不到相应的权限, 则认为认证失败.
 
 实际上, 在表单登录中, 用户的 IP 地址已经被存放在 `Authentication.getDetails()` 中了, 完全可以只重写一个 `AuthenticationProvider` 认证这个 IP 地址即可, 但本 demo 是为了理清 Spring Security 内部工作原理而设置, 为了设计到更多的类, 完全重写了 IP 过滤器.
+
+## 5.2 设计概述
+
+参考表单认证, 将表单认证相关的核心流程图再贴一遍:
+
+![authentication 时序图](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP4-3-3_authentication_sequence_chart.jpg?raw=true)
+
+在 IP 登录的 demo 中, 使用 `IpAuthenticationProcessingFilter` 拦截 IP 登录请求, 同样使用 `ProviderManager` 作为全局 `AuthenticationManager` 接口的实现类, 将 `ProviderManager` 内部的 `DaoAuthenticationProvider` 替换为 `IpAuthenticationProvider`, 而 `UserDetailsService` 则使用一个 `ConcurrentHashMap` 代替. 更详细一点的设计:
+
+1. `IpAuthenticationProcessingFilter` –> `UsernamePasswordAuthenticationFilter`
+2. `IpAuthenticationToken` –> `UsernamePasswordAuthenticationToken`
+3. `ProviderManager` –> `ProviderManager`
+4. `IpAuthenticationProvider` –> `DaoAuthenticationProvider`
+5. `ConcurrentHashMap` –> `UserDetailsService`
+
+## 5.3 IpAuthenticationToken
+
+```java
+public class IpAuthenticationToken extends AbstractAuthenticationToken {
+
+    private String ip;
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public IpAuthenticationToken(String ip) {
+        super(null);
+        this.ip = ip;
+        super.setAuthenticated(false);  // 这个构造方法是认证时使用的
+    }
+
+    public IpAuthenticationToken(String ip, Collection<? extends GrantedAuthority> authorities) {
+        super(authorities);
+        this.ip = ip;
+        super.setAuthenticated(true);   // 这个构造方法是认证后使用的
+    }
+
+    @Override
+    public Object getCredentials() {
+        return null;
+    }
+
+    @Override
+    public Object getPrincipal() {
+        return this.ip;
+    }
+}
+```
+
+两个构造方法需要引起我们的注意, 这里设计的用意是模仿的 `UsernamePasswordAuthenticationToken` 第一个构造器是用于认证之前, 传递给认证器使用的, 所以只有 IP 地址, 自然是未认证; 第二个构造器用于认证成功之后, 封装认证用户的信息, 此时需要将权限也设置到其中, 并且 setAuthenticated(true). 这样的设计在诸多的 Token 类设计中很常见.
+
+## 5.4 IpAuthenticationProcessingFilter
+
+```java
+public class IpAuthenticationProcessingFilter extends AbstractAuthenticationProcessingFilter {
+    // 使用 /ipVerify 该端点进行 ip 认证
+    public IpAuthenticationProcessingFilter(AuthenticationManager authenticationManager) {
+        super(new AntPathRequestMatcher("/ipVerify"));
+    }
+
+    @Override
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException, IOException, ServletException {
+        // 获取 host 信息
+        String host = request.getRemoteHost();
+        // 交给内部的 AuthenticationManager 去认证, 实现解耦
+        return getAuthenticationManager().authenticate(new IpAuthenticationToken(host));
+    }
+}
+```
+
+1. `AbstractAuthenticathionProcessingFilter` 这个过滤器之前介绍过, 是 `UsernamePasswordAuthenticationFilter` 的父类, 我们的 `IpAuthenticationProcessingFilter` 也继承了它.
+2. 构造器中传入了 /ipVerify 作为 IP 登录的端点.
+3. `attemptAuthentication()` 方法中加载请求的 IP 地址, 之后交给内部的 `AuthenticationManager` 去认证.
+
+## 5.5 IpAuthenticationProvider
+
+```java
+public class IpAuthenticationProvider implements AuthenticationProvider {
+
+    final static Map<String, SimpleGrantedAuthority> ipAuthorityMap = new ConcurrentHashMap<>();
+
+    // 维护一个 ip 白名单列表, 每个 ip 对应一定的权限
+    static {
+        ipAuthorityMap.put("127.0.0.1", new SimpleGrantedAuthority("ADMIN"));
+        ipAuthorityMap.put("172.16.28.210", new SimpleGrantedAuthority("ADMIN"));
+        ipAuthorityMap.put("192.168.31.32", new SimpleGrantedAuthority("FRIEND"));
+    }
+
+    @Override
+    public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        IpAuthenticationToken ipAuthenticationToken = (IpAuthenticationToken) authentication;
+        String ip = ipAuthenticationToken.getIp();
+        SimpleGrantedAuthority simpleGrantedAuthority = ipAuthorityMap.get(ip);
+
+        // 不在白名单列表中
+        if (simpleGrantedAuthority == null) {
+            return null;
+        } else {
+            // 封装权限信息, 并且此时身份已经被认证
+            return new IpAuthenticationToken(ip, Arrays.asList(simpleGrantedAuthority));
+        }
+    }
+
+    // 只支持 IpAuthenticationToken 该身份 token
+    @Override
+    public boolean supports(Class<?> authentication) {
+        return (IpAuthenticationToken.class.isAssignableFrom(authentication));
+    }
+}
+```
+
+`return new IpAuthentitcationToken(ip, Arrays.asList(simpleGrantedAuthority));` 使用了 `IpAuthenticationToken` 的第二个构造器, 返回了一个已经经过认证的 `IpAuthenticationToken`.
+
+## 5.6 配置 WebSecurityConfigAdapter
 
 ---
