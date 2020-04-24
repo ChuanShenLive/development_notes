@@ -16,6 +16,7 @@ public class IpAuthenticationProcessingFilter extends AbstractAuthenticationProc
     // 使用 /ipVerify 该端点进行 ip 认证
     public IpAuthenticationProcessingFilter(AuthenticationManager authenticationManager) {
         super(new AntPathRequestMatcher("/ipVerify"));
+        setAuthenticationManager(authenticationManager);
     }
 
     @Override

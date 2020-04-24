@@ -16,6 +16,7 @@ public class IpAuthenticationProvider implements AuthenticationProvider {
 
     // 维护一个 ip 白名单列表, 每个 ip 对应一定的权限
     static {
+        // ipAuthorityMap.put("0:0:0:0:0:0:0:1", new SimpleGrantedAuthority("ADMIN"));
         ipAuthorityMap.put("127.0.0.1", new SimpleGrantedAuthority("ADMIN"));
         ipAuthorityMap.put("172.16.28.210", new SimpleGrantedAuthority("ADMIN"));
         ipAuthorityMap.put("192.168.31.32", new SimpleGrantedAuthority("FRIEND"));

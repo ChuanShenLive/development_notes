@@ -51,6 +51,10 @@
 	- [5.4 IpAuthenticationProcessingFilter](#54-ipauthenticationprocessingfilter)
 	- [5.5 IpAuthenticationProvider](#55-ipauthenticationprovider)
 	- [5.6 配置 WebSecurityConfigAdapter](#56-%e9%85%8d%e7%bd%ae-websecurityconfigadapter)
+	- [5.7 配置 Spring MVC](#57-%e9%85%8d%e7%bd%ae-spring-mvc)
+	- [5.8 运行效果](#58-%e8%bf%90%e8%a1%8c%e6%95%88%e6%9e%9c)
+		- [失败的流程](#%e5%a4%b1%e8%b4%a5%e7%9a%84%e6%b5%81%e7%a8%8b)
+	- [5.9 总结](#59-%e6%80%bb%e7%bb%93)
 
 <!-- /TOC -->
 
@@ -1551,5 +1555,113 @@ public class IpAuthenticationProvider implements AuthenticationProvider {
 `return new IpAuthentitcationToken(ip, Arrays.asList(simpleGrantedAuthority));` 使用了 `IpAuthenticationToken` 的第二个构造器, 返回了一个已经经过认证的 `IpAuthenticationToken`.
 
 ## 5.6 配置 WebSecurityConfigAdapter
+
+```java
+@Configuration
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    // ip 认证者配置
+    @Bean
+    IpAuthenticationProvider ipAuthenticationProvider() {
+        return new IpAuthenticationProvider();
+    }
+
+    // 配置封装 ipAuthenticationToken 过滤器
+    IpAuthenticationProcessingFilter ipAuthenticationProcessingFilter(AuthenticationManager authenticationManager) {
+        // 创建过滤器并为过滤器添加认证器
+        IpAuthenticationProcessingFilter ipAuthenticationProcessingFilter = new IpAuthenticationProcessingFilter(authenticationManager);
+        // 重写认证失败跳转页面
+        ipAuthenticationProcessingFilter.setAuthenticationFailureHandler(new SimpleUrlAuthenticationFailureHandler("/ipLogin?error"));
+        return ipAuthenticationProcessingFilter;
+    }
+
+    // 配置登录端点
+    @Bean
+    LoginUrlAuthenticationEntryPoint loginUrlAuthenticationEntryPoint() {
+        LoginUrlAuthenticationEntryPoint loginUrlAuthenticationEntryPoint = new LoginUrlAuthenticationEntryPoint("/ipLogin");
+        return loginUrlAuthenticationEntryPoint;
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authorizeRequests()
+                    .antMatchers("/", "/home").permitAll()
+                    .antMatchers("/ipLogin").permitAll()
+                    .anyRequest().authenticated()
+                    .and()
+                .logout()
+                    .logoutSuccessUrl("/")
+                    .permitAll()
+                    .and()
+                .exceptionHandling()
+                    .accessDeniedPage("/ipLogin")
+                    .authenticationEntryPoint(loginUrlAuthenticationEntryPoint());
+        // 注册 IpAuthenticationProcessingFilter  注意放置的顺序 这很关键
+        http.addFilterBefore(ipAuthenticationProcessingFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class);
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.authenticationProvider(ipAuthenticationProvider());
+    }
+}
+```
+
+`WebSecurityConfigAdapter` 提供了我们很大的便利, 不需要关注 AuthenticationManager 什么时候被创建, 只需要使用其暴露的 `configure(AuthenticationManagerBuilder auth)` 便可以添加自定义的 `ipAuthenticationProvider`.
+
+## 5.7 配置 Spring MVC
+
+```java
+@Configuration
+public class MvcConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/home").setViewName("home");
+        registry.addViewController("/").setViewName("home");
+        registry.addViewController("/hello").setViewName("hello");
+        registry.addViewController("/ip").setViewName("ipHello");
+        registry.addViewController("/ipLogin").setViewName("ipLogin");
+    }
+}
+```
+
+页面的具体内容和表单登录基本一致, 可以在源码中查看.
+
+## 5.8 运行效果
+
+[http://127.0.0.1:8080/](http://127.0.0.1:8080/) 访问首页, 其中 here 链接到的地址为: [http://127.0.0.1:8080/hello](http://127.0.0.1:8080/hello)
+
+![首页_Home](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_Home.png?raw=true)
+
+点击 here, 由于 `http://127.0.0.1:8080/hello` 是受保护资源, 所以跳转到了校验 IP 的页面. 此时若点击 'Sign In by IP' 按钮, 将会提交到 `/ipVerify` 端点, 进行 IP 的认证.
+
+![登录_IpLogin](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_IpLogin.png?raw=true)
+
+登录校验成功之后, 页面被成功重定向到了原先访问的
+
+![受保护的 hello 页_Hello](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_Hello.png?raw=true)
+
+### 失败的流程
+
+注意此时已经注销了上次的登录, 并且, 使用了 localhost(localhost 和 127.0.0.1 是两个不同的 IP 地址, 我们的内存中只有 127.0.0.1 的用户, 没有 localhost 的用户)
+
+![首页_localhost_Home](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_localhost_Home.png?raw=true)
+
+点击 here 后，由于没有认证过，依旧跳转到登录页面
+
+![登录_localhost_IpLogin](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_localhost_IpLogin.png?raw=true)
+
+
+此时，我们发现使用 localhost，并没有认证成功，符合我们的预期
+
+![认证失败_localhost_IpLogin_error](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_localhost_IpLogin.png_error?raw=true)
+
+## 5.9 总结
+
+一个简单的使用 Spring Security 来进行验证 IP 地址的登录 demo 就已经完成了, 这个 demo 主要是为了更加清晰地阐释 Spring Security 内部工作的原理设置的, 其本身没有实际的项目意义, 认证 IP 其实也不应该通过 Spring Security 的过滤器去做, 退一步也应该交给 Filter 去做 (这个 Filter 不存在于 Spring Security 的过滤器链中), 而真正项目中, 如果真正要做黑白名单这样的功能, 一般选择在网关层或者 nginx 的扩展模块中做. 
+
+本节的代码可以在 github 中下载源码：[https://github.com/ChuanShenLive/development_notes/tree/master/Spring/spring-security-architecture/code/spring-security-iplogin-demo](https://github.com/ChuanShenLive/development_notes/tree/master/Spring/spring-security-architecture/code/spring-security-iplogin-demo)
 
 ---
