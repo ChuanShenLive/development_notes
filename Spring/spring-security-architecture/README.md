@@ -5,8 +5,10 @@
 
 ---
 
+# 目录
 <!-- TOC -->
 
+- [目录](#%e7%9b%ae%e5%bd%95)
 - [1 Spring Security Architecture Overview 核心组件](#1-spring-security-architecture-overview-%e6%a0%b8%e5%bf%83%e7%bb%84%e4%bb%b6)
 	- [1.1 SecurityContextHolder](#11-securitycontextholder)
 		- [获取当前用户的信息](#%e8%8e%b7%e5%8f%96%e5%bd%93%e5%89%8d%e7%94%a8%e6%88%b7%e7%9a%84%e4%bf%a1%e6%81%af)
@@ -23,7 +25,7 @@
 	- [2.4 添加启动类](#24-%e6%b7%bb%e5%8a%a0%e5%90%af%e5%8a%a8%e7%b1%bb)
 	- [2.5 测试](#25-%e6%b5%8b%e8%af%95)
 	- [2.6 总结](#26-%e6%80%bb%e7%bb%93)
-- [3. Spring Security 核心配置解读](#3-spring-security-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
+- [3 Spring Security 核心配置解读](#3-spring-security-%e6%a0%b8%e5%bf%83%e9%85%8d%e7%bd%ae%e8%a7%a3%e8%af%bb)
 	- [3.1 功能介绍](#31-%e5%8a%9f%e8%83%bd%e4%bb%8b%e7%bb%8d)
 	- [3.2 @EnableWebSecurity](#32-enablewebsecurity)
 		- [WebSecurityConfiguration](#websecurityconfiguration)
@@ -44,7 +46,7 @@
 		- [源码分析](#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90-3)
 	- [4.6 FilterSecurityInterceptor](#46-filtersecurityinterceptor)
 	- [总结](#%e6%80%bb%e7%bb%93)
-- [动手实现一个 IP_Login](#%e5%8a%a8%e6%89%8b%e5%ae%9e%e7%8e%b0%e4%b8%80%e4%b8%aa-iplogin)
+- [5 动手实现一个 IP_Login](#5-%e5%8a%a8%e6%89%8b%e5%ae%9e%e7%8e%b0%e4%b8%80%e4%b8%aa-iplogin)
 	- [5.1 定义需求](#51-%e5%ae%9a%e4%b9%89%e9%9c%80%e6%b1%82)
 	- [5.2 设计概述](#52-%e8%ae%be%e8%ae%a1%e6%a6%82%e8%bf%b0)
 	- [5.3 IpAuthenticationToken](#53-ipauthenticationtoken)
@@ -55,6 +57,7 @@
 	- [5.8 运行效果](#58-%e8%bf%90%e8%a1%8c%e6%95%88%e6%9e%9c)
 		- [失败的流程](#%e5%a4%b1%e8%b4%a5%e7%9a%84%e6%b5%81%e7%a8%8b)
 	- [5.9 总结](#59-%e6%80%bb%e7%bb%93)
+- [6 SpringSecurityFilterChain 加载流程深度解析](#6-springsecurityfilterchain-%e5%8a%a0%e8%bd%bd%e6%b5%81%e7%a8%8b%e6%b7%b1%e5%ba%a6%e8%a7%a3%e6%9e%90)
 
 <!-- /TOC -->
 
@@ -314,6 +317,8 @@ public interface UserDetailsService {
 
 如果对 Spring Security 的这些概念感到理解不能, 不用担心, 因为这是 Architecture First 导致的必然结果, 先过个眼熟. 后续的文章会秉持 Code First 的理念, 陆续详细地讲解这些实现类的使用场景, 源码分析, 以及最基本的: 如何配置 Spring Security, 在后面的文章中可以不时翻看这个章节, 找到具体的类在整个架构中所处的位置, 这也是本篇文章的定位. 另外, 一些 Spring Security 的过滤器还未囊括在架构概览中, 如将表单信息包装成 `UsernamePasswordAuthenticationToken` 的过滤器, 考虑到这些虽然也是架构的一部分, 但是真正重写他们的可能性较小, 所以打算放到后面的章节讲解.
 
+[返回目录](#目录)
+
 ---
 
 # 2 Spring Security Guides
@@ -545,9 +550,11 @@ public class SpringSecurityArchitectureDemoApplication {
 
 本篇文章没有什么干货, 基本算是翻译了 Spring Security Guides 的内容, 稍微了解 Spring Security 的朋友都不会对这个翻译感到陌生. 考虑到受众的问题, 一个入门的例子是必须得有的, 方便后续对 Spring Security 的自定义配置进行讲解. 下一节, 以此 guides 为例, 讲解这些最简化的配置背后, Spring Security 都帮我们做了什么工作.
 
+[返回目录](#目录)
+
 ---
 
-# 3. Spring Security 核心配置解读
+# 3 Spring Security 核心配置解读
 
 上一章 Spring Security Guides 通过 Spring Security 的配置项了解了 Spring Security 是如何保护我们的应用的, 本章对上一次的配置做一个分析.
 
@@ -838,6 +845,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 如果你的应用只有唯一一个 `WebSecurityConfigurerAdapter`, 那么他们之间的差距可以被忽略.
 
 从方法名可以看出两者的区别: 使用 `@Autowired` 注入的 `AuthenticationManagerBuilder` 是全局的身份认证器, 作用域可以跨越多个 `WebSecurityConfigurerAdapter`, 以及影响到基于 `Method` 的安全控制; 而 `protected configure()` 的方式则类似于一个匿名内部类, 它的作用域局限于一个 `WebSecurityConfigurerAdapter` 内部. 关于这一点的区别, 可以参考 [issuespring-security#issues4571](https://github.com/spring-projects/spring-security/issues/4571). 官方文档中, 也给出了配置多个 `WebSecurityConfigurerAdapter` 的场景以及 demo, 将在该系列的后续文章中解读.
+
+[返回目录](#目录)
 
 ---
 
@@ -1415,9 +1424,11 @@ protected void configure(HttpSecurity http) throws Exception {
 
 本章在介绍过滤器时, 顺便进行了一些源码的分析, 目的是方便理解整个 Spring Security 的工作流. 伴随着整个过滤器链的介绍, 安全框架的轮廓应该已经浮出水面了, 下面的章节, 主要打算通过自定义一些需求, 再次分析其他组件的源码, 学习应该如何改造 Spring Security, 为我们所用.
 
+[返回目录](#目录)
+
 ---
 
-# 动手实现一个 IP_Login
+# 5 动手实现一个 IP_Login
 
 思考下为什么需要搞清楚 Spring Security 的内部工作原理? 按照第二章中的配置, 一个简单的表单认证不就达成了吗? 更有甚者, 为什么我们不自己写一个表单认证, 用过滤器即可完成, 大费周章引入 Spring Security，看起来也并没有方便多少. 对的, 在引入 Spring Security 之前, 我们得首先想到, 是什么需求让我们引入了 Spring Security, 以及为什么是 Spring Security, 而不是 shiro 等等其他安全框架. 我的理解是有如下几点: 
 
@@ -1656,12 +1667,22 @@ public class MvcConfig implements WebMvcConfigurer {
 
 此时，我们发现使用 localhost，并没有认证成功，符合我们的预期
 
-![认证失败_localhost_IpLogin_error](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_localhost_IpLogin.png_error?raw=true)
+![认证失败_localhost_IpLogin_error](https://gitee.com/chuanshen/development_notes/raw/master/Spring/spring-security-architecture/images/CP5-5-8_localhost_IpLogin_error.png?raw=true)
 
 ## 5.9 总结
 
 一个简单的使用 Spring Security 来进行验证 IP 地址的登录 demo 就已经完成了, 这个 demo 主要是为了更加清晰地阐释 Spring Security 内部工作的原理设置的, 其本身没有实际的项目意义, 认证 IP 其实也不应该通过 Spring Security 的过滤器去做, 退一步也应该交给 Filter 去做 (这个 Filter 不存在于 Spring Security 的过滤器链中), 而真正项目中, 如果真正要做黑白名单这样的功能, 一般选择在网关层或者 nginx 的扩展模块中做. 
 
 本节的代码可以在 github 中下载源码：[https://github.com/ChuanShenLive/development_notes/tree/master/Spring/spring-security-architecture/code/spring-security-iplogin-demo](https://github.com/ChuanShenLive/development_notes/tree/master/Spring/spring-security-architecture/code/spring-security-iplogin-demo)
+
+[返回目录](#目录)
+
+---
+
+# 6 SpringSecurityFilterChain 加载流程深度解析
+
+`SpringSecurityFilterChain` 作为 SpringSecurity 的核心过滤器链在整个认证授权过程中起着举足轻重的地位, 每个请求到来, 都会经过该过滤器链, 第四节 [4 Spring Security 核心过滤器源码分析](#4-spring-security-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90) 中我们分析了 `SpringSecurityFilterChain` 的构成, 但还有很多疑问可能没有解开:
+
+1. 这个 `SpringSecurityFilterChain` 是怎么注册到 web 环境中的?
 
 ---
