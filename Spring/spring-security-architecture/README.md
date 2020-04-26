@@ -58,6 +58,10 @@
 		- [失败的流程](#%e5%a4%b1%e8%b4%a5%e7%9a%84%e6%b5%81%e7%a8%8b)
 	- [5.9 总结](#59-%e6%80%bb%e7%bb%93)
 - [6 SpringSecurityFilterChain 加载流程深度解析](#6-springsecurityfilterchain-%e5%8a%a0%e8%bd%bd%e6%b5%81%e7%a8%8b%e6%b7%b1%e5%ba%a6%e8%a7%a3%e6%9e%90)
+	- [6.1 SpringSecurityFilterChain 是怎么注册的](#61-springsecurityfilterchain-%e6%98%af%e6%80%8e%e4%b9%88%e6%b3%a8%e5%86%8c%e7%9a%84)
+			- [Java 配置方式](#java-%e9%85%8d%e7%bd%ae%e6%96%b9%e5%bc%8f)
+			- [XML 配置方式](#xml-%e9%85%8d%e7%bd%ae%e6%96%b9%e5%bc%8f)
+		- [6.1.1 servlet3.0+ 环境下 SpringSecurity 的 java config 方式](#611-servlet30-%e7%8e%af%e5%a2%83%e4%b8%8b-springsecurity-%e7%9a%84-java-config-%e6%96%b9%e5%bc%8f)
 
 <!-- /TOC -->
 
@@ -1684,5 +1688,258 @@ public class MvcConfig implements WebMvcConfigurer {
 `SpringSecurityFilterChain` 作为 SpringSecurity 的核心过滤器链在整个认证授权过程中起着举足轻重的地位, 每个请求到来, 都会经过该过滤器链, 第四节 [4 Spring Security 核心过滤器源码分析](#4-spring-security-%e6%a0%b8%e5%bf%83%e8%bf%87%e6%bb%a4%e5%99%a8%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90) 中我们分析了 `SpringSecurityFilterChain` 的构成, 但还有很多疑问可能没有解开:
 
 1. 这个 `SpringSecurityFilterChain` 是怎么注册到 web 环境中的?
+2. `SpringSecurityFilterChain` 的实现类到底是什么, 我知道它是一个 `Filter`, 但是在很多配置类中看到了 `BeanName=SpringSecurityFilterChain` 相关的类, 比如 `DelegatingFilterProxy`, `FilterChainProxy`, `SecurityFilterChain`, 他们的的名称实在太相似了, 到底哪个才是真正的实现, `SpringSecurity` 又为什么要这么设计?
+3. 我们貌似一直在配置 `WebSecurity`, 但没有对 `SpringSecurityFilterChain` 进行什么配置, `WebSecurity` 相关配置是怎么和 `SpringSecurityFilterChain` 结合在一起的?
+
+以上是一些 `SpringSecurityFilterChain` 相关的问题, 因为我当初研究了一段时间 `SpringSecurity` 源码, 依旧没有理清这么多错综复杂的类. 那么本文就主要围绕 `SpringSecurityFilterChain` 展开我们的探索.
+
+## 6.1 SpringSecurityFilterChain 是怎么注册的
+
+这个问题并不容易解释, 因为 SpringSecurity 仅仅在 web 环境下 (SpringSecurity 还支持非 web 环境) 就有非常多的支持形式:
+
+#### Java 配置方式
+
+1. 作为独立的 SpringSecurity 依赖提供给朴素的 java web 项目使用, 并且项目不使用 Spring！没错, 仅仅使用 servlet, jsp 的情况下也是可以集成 SpringSecurity 的.
+2. 提供给包含 SpringMVC 项目使用.
+3. 提供给具备 Servlet3.0+ 的 web 项目使用.
+4. SpringBoot 内嵌容器环境下使用 SpringSecurity, 并且包含了一定程度的自动配置.
+
+#### XML 配置方式
+
+1. 使用 XML 中的命名空间配置 SpringSecurity.
+
+注意, 以上条件可能存在交集, 比如我的项目是一个使用 servlet3.0 的 web 项目同时使用了 SpringMVC; 也有可能使用了 SpringBoot 同时配合 SpringMVC; 还有可能使用了 SpringBoot, 却打成了 war 包, 部署在外置的支持 Servlet3.0+ 规范的应用容器中... 各种组合方式会导致配置 `SpringSecurityFilterChain` 的注册方式产生差异, 所以, 这个问题说复杂还真有点, 需要根据你的环境来分析. 我主要分析几种较为常见的注册方式.
+ 
+`SpringSecurityFilterChain` 抽象概念里最重要的三个类: 
+
+- DelegatingFilterProxy
+- FilterChainProxy
+- SecurityFilterChain
+
+对这三个类的源码分析和设计将会贯彻本文. 不同环境下 `DelegatingFilterProxy` 的注册方式区别较大, 但 `FilterChainProxy` 和 `SecurityFilterChain` 的差异不大, 所以重点就是分析 `DelegatingFilterProxy` 的注册方式. 
+
+### 6.1.1 servlet3.0+ 环境下 SpringSecurity 的 java config 方式 
+
+这是一个比较常见的场景, 你可能还没有使用 SpringBoot 内嵌的容器, 将项目打成 war 包部署在外置的应用容器中, 比如最常见的 tomcat, 一般很少 web 项目低于 servlet3.0 版本的, 并且该场景摒弃了 XML 配置.
+
+```java
+import org.springframework.security.web.context.*;
+
+public class SecurityWebApplicationInitializer
+	extends AbstractSecurityWebApplicationInitializer {
+}
+```
+
+主要自定义一个 `SecurityWebApplicationInitializer` 并且让其继承自 `AbstractSecurityWebApplicationInitializer` 即可. 如此简单的一个继承背后又经历了 Spring 怎样的封装呢? 自然要去 `AbstractSecurityWebApplicationInitializer` 中去一探究竟. 经过删减后的源码如下:
+
+```java
+public abstract class AbstractSecurityWebApplicationInitializer
+		implements WebApplicationInitializer {	// <1>
+
+	public static final String DEFAULT_FILTER_NAME = "springSecurityFilterChain";
+
+	// <1> 父类 WebApplicationInitializer 的加载入口
+	public final void onStartup(ServletContext servletContext) {
+		beforeSpringSecurityFilterChain(servletContext);
+		if (this.configurationClasses != null) {
+			AnnotationConfigWebApplicationContext rootAppContext = new AnnotationConfigWebApplicationContext();
+			rootAppContext.register(this.configurationClasses);
+			servletContext.addListener(new ContextLoaderListener(rootAppContext));
+		}
+		if (enableHttpSessionEventPublisher()) {
+			servletContext.addListener(
+					"org.springframework.security.web.session.HttpSessionEventPublisher");
+		}
+		servletContext.setSessionTrackingModes(getSessionTrackingModes());
+		insertSpringSecurityFilterChain(servletContext);	// <2>
+		afterSpringSecurityFilterChain(servletContext);
+	}
+
+	// <2> 在这初始化了关键的 DelegatingFilterProxy
+	private void insertSpringSecurityFilterChain(ServletContext servletContext) {
+		String filterName = DEFAULT_FILTER_NAME;
+		DelegatingFilterProxy springSecurityFilterChain = new DelegatingFilterProxy(
+				filterName);
+		String contextAttribute = getWebApplicationContextAttribute();
+		if (contextAttribute != null) {
+			springSecurityFilterChain.setContextAttribute(contextAttribute);
+		}
+		registerFilter(servletContext, true, filterName, springSecurityFilterChain);
+	}
+
+	/**
+	 * Inserts the provided {@link Filter}s before existing {@link Filter}s using default
+	 * generated names, {@link #getSecurityDispatcherTypes()}, and
+	 * {@link #isAsyncSecuritySupported()}.
+	 *
+	 * @param servletContext the {@link ServletContext} to use
+	 * @param filters the {@link Filter}s to register
+	 */
+	protected final void insertFilters(ServletContext servletContext, Filter... filters) {
+		registerFilters(servletContext, true, filters);
+	}
+
+	/**
+	 * Inserts the provided {@link Filter}s after existing {@link Filter}s using default
+	 * generated names, {@link #getSecurityDispatcherTypes()}, and
+	 * {@link #isAsyncSecuritySupported()}.
+	 *
+	 * @param servletContext the {@link ServletContext} to use
+	 * @param filters the {@link Filter}s to register
+	 */
+	protected final void appendFilters(ServletContext servletContext, Filter... filters) {
+		registerFilters(servletContext, false, filters);
+	}
+
+	/**
+	 * Registers the provided {@link Filter}s using default generated names,
+	 * {@link #getSecurityDispatcherTypes()}, and {@link #isAsyncSecuritySupported()}.
+	 *
+	 * @param servletContext the {@link ServletContext} to use
+	 * @param insertBeforeOtherFilters if true, will insert the provided {@link Filter}s
+	 * before other {@link Filter}s. Otherwise, will insert the {@link Filter}s after
+	 * other {@link Filter}s.
+	 * @param filters the {@link Filter}s to register
+	 */
+	private void registerFilters(ServletContext servletContext,
+			boolean insertBeforeOtherFilters, Filter... filters) {
+		Assert.notEmpty(filters, "filters cannot be null or empty");
+
+		for (Filter filter : filters) {
+			if (filter == null) {
+				throw new IllegalArgumentException(
+						"filters cannot contain null values. Got "
+								+ Arrays.asList(filters));
+			}
+			String filterName = Conventions.getVariableName(filter);
+			registerFilter(servletContext, insertBeforeOtherFilters, filterName, filter);
+		}
+	}
+
+	/**
+	 * Registers the provided filter using the {@link #isAsyncSecuritySupported()} and
+	 * {@link #getSecurityDispatcherTypes()}.
+	 *
+	 * @param servletContext
+	 * @param insertBeforeOtherFilters should this Filter be inserted before or after
+	 * other {@link Filter}
+	 * @param filterName
+	 * @param filter
+	 */
+	private void registerFilter(ServletContext servletContext,
+								boolean insertBeforeOtherFilters, String filterName, Filter filter) {
+		Dynamic registration = servletContext.addFilter(filterName, filter);
+		if (registration == null) {
+			throw new IllegalStateException(
+					"Duplicate Filter registration for '" + filterName
+							+ "'. Check to ensure the Filter is only configured once.");
+		}
+		registration.setAsyncSupported(isAsyncSecuritySupported());
+		EnumSet<DispatcherType> dispatcherTypes = getSecurityDispatcherTypes();
+		registration.addMappingForUrlPatterns(dispatcherTypes, !insertBeforeOtherFilters,
+				"/*");
+	}
+
+	/**
+	 * Returns the {@link DelegatingFilterProxy#getContextAttribute()} or null if the
+	 * parent {@link ApplicationContext} should be used. The default behavior is to use
+	 * the parent {@link ApplicationContext}.
+	 *
+	 * <p>
+	 * If {@link #getDispatcherWebApplicationContextSuffix()} is non-null the
+	 * {@link WebApplicationContext} for the Dispatcher will be used. This means the child
+	 * {@link ApplicationContext} is used to look up the springSecurityFilterChain bean.
+	 * </p>
+	 *
+	 * @return the {@link DelegatingFilterProxy#getContextAttribute()} or null if the
+	 * parent {@link ApplicationContext} should be used
+	 */
+	private String getWebApplicationContextAttribute() {
+		String dispatcherServletName = getDispatcherWebApplicationContextSuffix();
+		if (dispatcherServletName == null) {
+			return null;
+		}
+		return SERVLET_CONTEXT_PREFIX + dispatcherServletName;
+	}
+
+	/**
+	 * Determines how a session should be tracked. By default,
+	 * {@link SessionTrackingMode#COOKIE} is used.
+	 *
+	 * <p>
+	 * Note that {@link SessionTrackingMode#URL} is intentionally omitted to help
+	 * protected against <a href="https://en.wikipedia.org/wiki/Session_fixation">session
+	 * fixation attacks</a>. {@link SessionTrackingMode#SSL} is omitted because SSL
+	 * configuration is required for this to work.
+	 * </p>
+	 *
+	 * <p>
+	 * Subclasses can override this method to make customizations.
+	 * </p>
+	 *
+	 * @return
+	 */
+	protected Set<SessionTrackingMode> getSessionTrackingModes() {
+		return EnumSet.of(SessionTrackingMode.COOKIE);
+	}
+
+	/**
+	 * Return the &lt;servlet-name&gt; to use the DispatcherServlet's
+	 * {@link WebApplicationContext} to find the {@link DelegatingFilterProxy} or null to
+	 * use the parent {@link ApplicationContext}.
+	 *
+	 * <p>
+	 * For example, if you are using AbstractDispatcherServletInitializer or
+	 * AbstractAnnotationConfigDispatcherServletInitializer and using the provided Servlet
+	 * name, you can return "dispatcher" from this method to use the DispatcherServlet's
+	 * {@link WebApplicationContext}.
+	 * </p>
+	 *
+	 * @return the &lt;servlet-name&gt; of the DispatcherServlet to use its
+	 * {@link WebApplicationContext} or null (default) to use the parent
+	 * {@link ApplicationContext}.
+	 */
+	protected String getDispatcherWebApplicationContextSuffix() {
+		return null;
+	}
+
+	/**
+	 * Invoked before the springSecurityFilterChain is added.
+	 * @param servletContext the {@link ServletContext}
+	 */
+	protected void beforeSpringSecurityFilterChain(ServletContext servletContext) {
+
+	}
+
+	/**
+	 * Invoked after the springSecurityFilterChain is added.
+	 * @param servletContext the {@link ServletContext}
+	 */
+	protected void afterSpringSecurityFilterChain(ServletContext servletContext) {
+
+	}
+
+	/**
+	 * Get the {@link DispatcherType} for the springSecurityFilterChain.
+	 * @return
+	 */
+	protected EnumSet<DispatcherType> getSecurityDispatcherTypes() {
+		return EnumSet.of(DispatcherType.REQUEST, DispatcherType.ERROR,
+				DispatcherType.ASYNC);
+	}
+
+	/**
+	 * Determine if the springSecurityFilterChain should be marked as supporting asynch.
+	 * Default is true.
+	 *
+	 * @return true if springSecurityFilterChain should be marked as supporting asynch
+	 */
+	protected boolean isAsyncSecuritySupported() {
+		return true;
+	}
+}
+
+```
 
 ---
+
