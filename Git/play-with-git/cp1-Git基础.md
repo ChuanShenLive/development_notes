@@ -1,11 +1,28 @@
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
+<!-- code_chunk_output -->
+
+- [1. 综述](#1-综述)
+    - [1> 版本控制系统 VCS 分类](#1-版本控制系统-vcs-分类)
+    - [2> Git 的特点](#2-git-的特点)
+    - [工具](#工具)
+- [2 安装-Git](#2-安装-git)
+  - [Linux](#linux)
+  - [Windows](#windows)
+    - [社区命令行工具](#社区命令行工具)
+    - [第三方图形化工具](#第三方图形化工具)
+  - [验证](#验证)
+
+<!-- /code_chunk_output -->
+
 [TOC]
 
 
 # 1. 综述
 
 ### 1> 版本控制系统 VCS 分类
+![集中式版本控制系统](https://gitee.com/chuanshen/development_notes/raw/master/Git/play-with-git/img/cp1-%E9%9B%86%E4%B8%AD%E5%BC%8F%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+![分布式版本控制系统](https://gitee.com/chuanshen/development_notes/raw/master/Git/play-with-git/img/cp1-%E5%88%86%E5%B8%83%E5%BC%8F%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
 
 - 集中式版本控制系统 (集中式 VCS)
     - 由集中的版本管理服务器(文件, 文件夹的版本演进历史)
