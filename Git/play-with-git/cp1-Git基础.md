@@ -12,6 +12,12 @@
     - [社区命令行工具](#社区命令行工具)
     - [第三方图形化工具](#第三方图形化工具)
   - [验证](#验证)
+- [3 Git 最小配置](#3-git-最小配置)
+- [4 创建 git 仓库](#4-创建-git-仓库)
+    - [add 添加文件](#add-添加文件)
+    - [status 查看当前仓库状态](#status-查看当前仓库状态)
+    - [commit 提交](#commit-提交)
+    - [log 查看变更日志](#log-查看变更日志)
 
 <!-- /code_chunk_output -->
 
@@ -96,4 +102,95 @@ $ sudo apt install git-all
 ```shell script
 C:\Users\chuan>git --version
 git version 2.19.1.windows.1
+```
+
+# 3 Git 最小配置
+
+配置 global
+
+user.name
+user.email
+
+信息体现在变更信息中, 即变更信息中记录【谁】什么时间做了变更. 邮箱也用于 review 时发送反馈邮件.
+
+```shell script
+git config --global user.name 'your_name'
+git config --global user.email 'your_email@domain.com'
+```
+
+config 的三个作用域
+
+- local (缺省)只对当前仓库有效, 在git 仓库目录中有效
+- global 对当前用户所有仓库有效
+- system 对系统所有登录的用户有效
+
+```shell script
+git config --local
+git config --global
+git config --system
+
+# 显示 config 的配置, 使用 --list 指令
+git config --list --local
+git config --list --global
+git config --list --system
+
+# 清除设置
+$ git config --unset --local user.name
+$ git config --unset --global user.name
+$ git config --unset --system user.name
+```
+
+> local > global > system
+> git config --list 显示整合 system global local 的混合版本
+
+# 4 创建 git 仓库
+
+两种 场景:
+
+1.把已有的项目代码纳入 Git 管理
+
+```shell script
+cd 项目代码所在的文件夹
+git init
+```
+
+2.新建的项目直接使用 Git 管理
+
+```shell script
+cd 某个文件夹
+git init your_project #会在当前路径下创建和项目名称同名的文件夹
+cd your_project
+```
+
+创建成功后, 在目标目录中生成一个 .git 的隐藏目录, 这是 git 仓库的核心目录, 删除后, 目录中将不在存在版本信息.
+
+### add 添加文件
+
+对文件的修改可以直接提交, 但如果是新建的文件, 需要先添加 add 将文件纳入到版本控制的管控之中, 放入暂存区, 再进行提交.
+
+```shell script
+git add 文件名
+```
+
+### status 查看当前仓库状态
+
+```shell script
+git status 
+```
+
+### commit 提交
+
+将 暂存区的变更, 正式的提交
+```shell script 
+git commit -m '说明' 
+```
+
+> 默认配置必须填写说明, vanderful.
+
+### log 查看变更日志
+
+查看仓库当前分支的变更日志
+
+```shell script 
+git log 
 ```
